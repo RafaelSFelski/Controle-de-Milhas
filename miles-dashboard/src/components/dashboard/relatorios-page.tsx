@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Download } from "lucide-react";
 import {
   Bar,
@@ -33,6 +33,11 @@ import { ptBR } from "date-fns/locale";
 export function RelatoriosPageClient() {
   const { data: movs } = useMovimentacoes();
   const { data: transferencias } = useTransferencias();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Acúmulo vs gasto por mês (12 meses)
   const acumuloVsGasto = useMemo(() => {
@@ -124,6 +129,10 @@ export function RelatoriosPageClient() {
         <CardContent>
           {acumuloVsGasto.length === 0 ? (
             <p className="text-sm text-muted-foreground py-12 text-center">Sem dados.</p>
+          ) : !mounted ? (
+            <div className="h-72 flex items-center justify-center">
+              <p className="text-sm text-muted-foreground">Carregando gráfico...</p>
+            </div>
           ) : (
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>

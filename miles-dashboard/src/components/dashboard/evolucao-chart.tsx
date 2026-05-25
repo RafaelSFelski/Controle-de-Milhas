@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   CartesianGrid,
   Line,
@@ -17,6 +18,12 @@ interface EvolucaoChartProps {
 }
 
 export function EvolucaoChart({ data }: EvolucaoChartProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <Card>
       <CardHeader>
@@ -27,6 +34,10 @@ export function EvolucaoChart({ data }: EvolucaoChartProps) {
           <p className="text-sm text-muted-foreground py-12 text-center">
             Sem movimentações para exibir.
           </p>
+        ) : !mounted ? (
+          <div className="h-64 flex items-center justify-center">
+            <p className="text-sm text-muted-foreground">Carregando gráfico...</p>
+          </div>
         ) : (
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
