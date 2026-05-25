@@ -126,7 +126,7 @@ export function RelatoriosPageClient() {
             <p className="text-sm text-muted-foreground py-12 text-center">Sem dados.</p>
           ) : (
             <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <BarChart data={acumuloVsGasto}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="mes" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
