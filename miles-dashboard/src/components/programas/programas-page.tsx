@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plane, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plane, Plus, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
@@ -32,8 +32,9 @@ import {
   useCreatePrograma,
   useDeletePrograma,
   useProgramas,
+  useUpdatePrograma,
 } from "@/lib/queries/programas";
-import type { CategoriaPrograma } from "@/types/database";
+import type { CategoriaPrograma, Programa } from "@/types/database";
 
 interface FormValues {
   nome: string;
@@ -54,13 +55,18 @@ const CATEGORIAS: { value: CategoriaPrograma; label: string }[] = [
 export function ProgramasPageClient() {
   const { data, isLoading } = useProgramas();
   const createMut = useCreatePrograma();
+  const updateMut = useUpdatePrograma();
   const deleteMut = useDeletePrograma();
-  const [open, setOpen] = useState(false);
-  const { register, handleSubmit, reset, formState } = useForm<FormValues>({
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editingPrograma, setEditingPrograma] = useState<Programa | null>(null);
+
+  const createForm = useForm<FormValues>({
     defaultValues: { categoria: "aerea", cor: "#0ea5e9", validade_meses: 24 },
   });
+  const editForm = useForm<FormValues>();
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmitCreate = async (values: FormValues) => {
     try {
       await createMut.mutateAsync({
         nome: values.nome.trim(),
@@ -69,8 +75,35 @@ export function ProgramasPageClient() {
         validade_meses: Number(values.validade_meses ?? 24),
       });
       toast.success("Programa criado");
-      reset({ categoria: "aerea", cor: "#0ea5e9", validade_meses: 24 });
-      setOpen(false);
+      createForm.reset({ categoria: "aerea", cor: "#0ea5e9", validade_meses: 24 });
+      setCreateOpen(false);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const onOpenEdit = (programa: Programa) => {
+    setEditingPrograma(programa);
+    editForm.reset({
+      nome: programa.nome,
+      categoria: programa.categoria,
+      cor: programa.cor,
+      validade_meses: programa.validade_meses,
+    });
+  };
+
+  const onSubmitEdit = async (values: FormValues) => {
+    if (!editingPrograma) return;
+    try {
+      await updateMut.mutateAsync({
+        id: editingPrograma.id,
+        nome: values.nome.trim(),
+        categoria: values.categoria,
+        cor: values.cor ?? "#0ea5e9",
+        validade_meses: Number(values.validade_meses ?? 24),
+      });
+      toast.success("Programa atualizado");
+      setEditingPrograma(null);
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -93,7 +126,7 @@ export function ProgramasPageClient() {
         title="Programas"
         description="Catálogo de programas de fidelidade disponíveis no sistema"
         action={
-          <Dialog open={open} onOpenChange={setOpen}>
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4" /> Novo programa
@@ -103,15 +136,15 @@ export function ProgramasPageClient() {
               <DialogHeader>
                 <DialogTitle>Novo programa</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={createForm.handleSubmit(onSubmitCreate)} className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="nome">Nome *</Label>
-                  <Input id="nome" {...register("nome", { required: true })} />
+                  <Label htmlFor="create-nome">Nome *</Label>
+                  <Input id="create-nome" {...createForm.register("nome", { required: true })} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="categoria">Categoria</Label>
-                    <Select id="categoria" {...register("categoria")}>
+                    <Label htmlFor="create-categoria">Categoria</Label>
+                    <Select id="create-categoria" {...createForm.register("categoria")}>
                       {CATEGORIAS.map((c) => (
                         <option key={c.value} value={c.value}>
                           {c.label}
@@ -120,24 +153,24 @@ export function ProgramasPageClient() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="validade_meses">Validade (meses)</Label>
+                    <Label htmlFor="create-validade">Validade (meses)</Label>
                     <Input
-                      id="validade_meses"
+                      id="create-validade"
                       type="number"
                       min={1}
-                      {...register("validade_meses", { valueAsNumber: true })}
+                      {...createForm.register("validade_meses", { valueAsNumber: true })}
                     />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="cor">Cor</Label>
-                  <Input id="cor" type="color" {...register("cor")} className="h-10 w-20 p-1" />
+                  <Label htmlFor="create-cor">Cor</Label>
+                  <Input id="create-cor" type="color" {...createForm.register("cor")} className="h-10 w-20 p-1" />
                 </div>
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit" disabled={formState.isSubmitting}>
+                  <Button type="submit" disabled={createForm.formState.isSubmitting}>
                     Salvar
                   </Button>
                 </DialogFooter>
@@ -146,6 +179,54 @@ export function ProgramasPageClient() {
           </Dialog>
         }
       />
+
+      {/* Dialog de edição */}
+      <Dialog open={!!editingPrograma} onOpenChange={(open) => { if (!open) setEditingPrograma(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar programa</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={editForm.handleSubmit(onSubmitEdit)} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-nome">Nome *</Label>
+              <Input id="edit-nome" {...editForm.register("nome", { required: true })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-categoria">Categoria</Label>
+                <Select id="edit-categoria" {...editForm.register("categoria")}>
+                  {CATEGORIAS.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-validade">Validade (meses)</Label>
+                <Input
+                  id="edit-validade"
+                  type="number"
+                  min={1}
+                  {...editForm.register("validade_meses", { valueAsNumber: true })}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-cor">Cor</Label>
+              <Input id="edit-cor" type="color" {...editForm.register("cor")} className="h-10 w-20 p-1" />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditingPrograma(null)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={editForm.formState.isSubmitting}>
+                Salvar
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Carregando...</p>
@@ -164,7 +245,7 @@ export function ProgramasPageClient() {
                 <TableHead>Categoria</TableHead>
                 <TableHead className="text-right">Validade</TableHead>
                 <TableHead></TableHead>
-                <TableHead className="w-12"></TableHead>
+                <TableHead className="w-24"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -191,15 +272,26 @@ export function ProgramasPageClient() {
                     {p.is_default && <Badge variant="outline">Padrão</Badge>}
                   </TableCell>
                   <TableCell>
-                    {!p.is_default && (
+                    <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => onDelete(p.id, p.nome)}
+                        onClick={() => onOpenEdit(p)}
+                        aria-label="Editar"
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Pencil className="h-4 w-4" />
                       </Button>
-                    )}
+                      {!p.is_default && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onDelete(p.id, p.nome)}
+                          aria-label="Excluir"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

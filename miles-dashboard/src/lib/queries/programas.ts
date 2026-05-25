@@ -47,6 +47,34 @@ export function useCreatePrograma() {
   });
 }
 
+export function useUpdatePrograma() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      nome: string;
+      categoria: CategoriaPrograma;
+      cor: string;
+      validade_meses: number;
+    }) => {
+      const { data, error } = await getSupabase()
+        .from("programas")
+        .update({
+          nome: input.nome,
+          categoria: input.categoria,
+          cor: input.cor,
+          validade_meses: input.validade_meses,
+        })
+        .eq("id", input.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.programas }),
+  });
+}
+
 export function useDeletePrograma() {
   const qc = useQueryClient();
   return useMutation({
