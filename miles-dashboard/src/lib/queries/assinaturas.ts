@@ -161,6 +161,46 @@ export function useUpdateAssinaturaStatus() {
   });
 }
 
+export function useUpdateAssinatura() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      nome_plano: string;
+      valor_mensal: number;
+      dia_cobranca: number;
+      milhas_mensais: number;
+      data_inicio: string;
+      bonus_percentual: number;
+      bonus_fixo: number;
+      bonus_adesao: number;
+    }) => {
+      const { data, error } = await getSupabase()
+        .from("assinaturas")
+        .update({
+          nome_plano: input.nome_plano,
+          valor_mensal: input.valor_mensal,
+          dia_cobranca: input.dia_cobranca,
+          milhas_mensais: input.milhas_mensais,
+          data_inicio: input.data_inicio,
+          bonus_percentual: input.bonus_percentual,
+          bonus_fixo: input.bonus_fixo,
+          bonus_adesao: input.bonus_adesao,
+        })
+        .eq("id", input.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.assinaturas });
+      qc.invalidateQueries({ queryKey: queryKeys.movimentacoes() });
+      qc.invalidateQueries({ queryKey: queryKeys.contasComJoin });
+    },
+  });
+}
+
 export function useDeleteAssinatura() {
   const qc = useQueryClient();
   return useMutation({
