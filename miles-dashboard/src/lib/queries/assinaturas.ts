@@ -101,8 +101,10 @@ export function useCreateAssinatura() {
 
       const assinatura = data as { id: string };
 
-      // Gera o crédito mensal do mês corrente (milhas_mensais + bonus_percentual + bonus_fixo)
-      const { error: gerarErr } = await sb.rpc("gerar_creditos_assinaturas_mes", {});
+      // Gera os créditos retroativos de todos os meses desde data_inicio até o mês atual
+      const { error: gerarErr } = await sb.rpc("gerar_creditos_retroativos_assinatura", {
+        p_assinatura_id: assinatura.id,
+      });
       if (gerarErr) throw gerarErr;
 
       // Credita o bônus de adesão one-time, se solicitado
@@ -247,8 +249,10 @@ export function useUpgradeAssinatura() {
 
       const nova = data as { id: string };
 
-      // 3. Gera crédito mensal da nova assinatura
-      const { error: gerarErr } = await sb.rpc("gerar_creditos_assinaturas_mes", {});
+      // 3. Gera créditos retroativos da nova assinatura (todos os meses desde data_inicio)
+      const { error: gerarErr } = await sb.rpc("gerar_creditos_retroativos_assinatura", {
+        p_assinatura_id: nova.id,
+      });
       if (gerarErr) throw gerarErr;
 
       // 4. Aplica bônus de adesão se solicitado
