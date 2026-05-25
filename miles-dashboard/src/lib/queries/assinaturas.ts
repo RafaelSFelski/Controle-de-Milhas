@@ -101,6 +101,11 @@ export function useCreateAssinatura() {
 
       const assinatura = data as { id: string };
 
+      // Gera o crédito mensal do mês corrente (milhas_mensais + bonus_percentual + bonus_fixo)
+      const { error: gerarErr } = await sb.rpc("gerar_creditos_assinaturas_mes", {});
+      if (gerarErr) throw gerarErr;
+
+      // Credita o bônus de adesão one-time, se solicitado
       if (
         input.aplicar_bonus_adesao &&
         input.bonus_adesao &&
