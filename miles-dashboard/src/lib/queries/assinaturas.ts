@@ -68,13 +68,19 @@ export interface CreateAssinaturaInput {
   data_inicio: string;
   data_fim?: string | null;
   status?: StatusAssinatura;
+  bonus_percentual?: number;
+  bonus_fixo?: number;
+  bonus_adesao?: number;
+  /** Se true, aplica o bônus de adesão imediatamente após criar a assinatura. */
+  aplicar_bonus_adesao?: boolean;
 }
 
 export function useCreateAssinatura() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: CreateAssinaturaInput) => {
-      const { data, error } = await getSupabase()
+      const sb = getSupabase();
+      const { data, error } = await sb
         .from("assinaturas")
         .insert({
           conta_id: input.conta_id,
@@ -85,13 +91,54 @@ export function useCreateAssinatura() {
           data_inicio: input.data_inicio,
           data_fim: input.data_fim ?? null,
           status: input.status ?? "ativa",
+          bonus_percentual: input.bonus_percentual ?? 0,
+          bonus_fixo: input.bonus_fixo ?? 0,
+          bonus_adesao: input.bonus_adesao ?? 0,
         })
         .select()
         .single();
       if (error) throw error;
+
+      const assinatura = data as { id: string };
+
+      if (
+        input.aplicar_bonus_adesao &&
+        input.bonus_adesao &&
+        input.bonus_adesao > 0
+      ) {
+        const { error: rpcErr } = await sb.rpc(
+          "aplicar_bonus_adesao_assinatura",
+          { p_assinatura_id: assinatura.id }
+        );
+        if (rpcErr) throw rpcErr;
+      }
+
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.assinaturas }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.assinaturas });
+      qc.invalidateQueries({ queryKey: queryKeys.movimentacoes() });
+      qc.invalidateQueries({ queryKey: queryKeys.contasComJoin });
+    },
+  });
+}
+
+export function useAplicarBonusAdesao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (assinaturaId: string): Promise<number> => {
+      const { data, error } = await getSupabase().rpc(
+        "aplicar_bonus_adesao_assinatura",
+        { p_assinatura_id: assinaturaId }
+      );
+      if (error) throw error;
+      return Number(data) || 0;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.assinaturas });
+      qc.invalidateQueries({ queryKey: queryKeys.movimentacoes() });
+      qc.invalidateQueries({ queryKey: queryKeys.contasComJoin });
+    },
   });
 }
 

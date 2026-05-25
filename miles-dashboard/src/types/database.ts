@@ -85,6 +85,14 @@ export interface Assinatura {
   data_inicio: string;
   data_fim: string | null;
   status: StatusAssinatura;
+  /** Bônus % aplicado sobre milhas_mensais a cada crédito mensal. */
+  bonus_percentual: number;
+  /** Milhas extras somadas após o percentual a cada crédito mensal. */
+  bonus_fixo: number;
+  /** Bônus único creditado ao contratar (one-time). */
+  bonus_adesao: number;
+  /** True se o bônus de adesão já foi creditado. */
+  bonus_adesao_creditado: boolean;
   created_at: string;
 }
 

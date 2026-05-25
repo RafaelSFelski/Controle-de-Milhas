@@ -17,28 +17,6 @@ export function calcularTransferencia(
 }
 
 /**
- * Custo em R$ por milha de uma assinatura.
- */
-export function custoPorMilha(
-  valorMensal: number,
-  milhasMensais: number
-): number {
-  if (!milhasMensais || milhasMensais <= 0) return 0;
-  return valorMensal / milhasMensais;
-}
-
-/**
- * Custo por milheiro (R$ por 1000 milhas) — métrica padrão para avaliar clubes de fidelidade.
- */
-export function custoPorMilheiro(
-  valorMensal: number,
-  milhasMensais: number
-): number {
-  if (!milhasMensais || milhasMensais <= 0) return 0;
-  return (valorMensal / milhasMensais) * 1000;
-}
-
-/**
  * Valor estimado da carteira: soma de (saldo / 1000) * cotação_milheiro.
  * cotacoesMap: { programaId: valor_milheiro }
  */
@@ -104,16 +82,47 @@ export function projecaoMeta(
 }
 
 /**
- * Calcula a data de expiração de uma movimentação de crédito,
- * baseado na validade do programa em meses.
+ * Calcula a quantidade efetiva de milhas creditadas mensalmente em uma assinatura,
+ * considerando bônus percentual e bônus fixo.
+ * Fórmula: milhas_mensais * (1 + bonus_percentual/100) + bonus_fixo
  */
-export function calcularDataExpiracao(
-  dataCredito: Date | string,
-  validadeMeses: number
-): Date {
-  const base =
-    typeof dataCredito === "string" ? parseISO(dataCredito) : dataCredito;
-  return addMonths(base, validadeMeses);
+export function milhasEfetivasMensais(
+  milhasMensais: number,
+  bonusPercentual = 0,
+  bonusFixo = 0
+): number {
+  const base = (milhasMensais ?? 0) * (1 + (bonusPercentual ?? 0) / 100);
+  return Math.round((base + (bonusFixo ?? 0)) * 100) / 100;
+}
+
+/**
+ * Custo em R$ por milha de uma assinatura.
+ * Considera bônus percentual e fixo no denominador (milhas efetivas).
+ * Retorna 0 se milhas efetivas for inválido.
+ */
+export function custoPorMilha(
+  valorMensal: number,
+  milhasMensais: number,
+  bonusPercentual = 0,
+  bonusFixo = 0
+): number {
+  const efetivas = milhasEfetivasMensais(milhasMensais, bonusPercentual, bonusFixo);
+  if (!efetivas || efetivas <= 0) return 0;
+  return valorMensal / efetivas;
+}
+
+/**
+ * Custo por milheiro (1000 milhas) — métrica mais comum no mercado.
+ */
+export function custoPorMilheiro(
+  valorMensal: number,
+  milhasMensais: number,
+  bonusPercentual = 0,
+  bonusFixo = 0
+): number {
+  return (
+    custoPorMilha(valorMensal, milhasMensais, bonusPercentual, bonusFixo) * 1000
+  );
 }
 
 /**
@@ -125,4 +134,16 @@ export function diasAteExpiracao(dataExpiracao: string | Date): number {
       ? parseISO(dataExpiracao)
       : dataExpiracao;
   return differenceInDays(exp, new Date());
+}
+
+/**
+ * Calcula a data de expiração de um crédito a partir da data e validade em meses.
+ */
+export function calcularDataExpiracao(
+  dataCredito: Date | string,
+  validadeMeses: number
+): Date {
+  const base =
+    typeof dataCredito === "string" ? parseISO(dataCredito) : dataCredito;
+  return addMonths(base, validadeMeses);
 }
