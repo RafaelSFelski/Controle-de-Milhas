@@ -53,7 +53,7 @@ interface FormValues {
   // Compra de pontos (Esfera / Livelo)
   comprar_pontos: boolean;
   pontos_comprados: number;
-  preco_por_ponto: number;
+  valor_total_compra: number;
 }
 
 export function TransferenciasPageClient() {
@@ -72,7 +72,7 @@ export function TransferenciasPageClient() {
       data: new Date().toISOString().slice(0, 10),
       comprar_pontos: false,
       pontos_comprados: 0,
-      preco_por_ponto: 0,
+      valor_total_compra: 0,
     },
   });
   const { register, handleSubmit, control, reset, formState } = form;
@@ -105,8 +105,8 @@ export function TransferenciasPageClient() {
   // Custo da compra de pontos
   const custoPontosComprados = useMemo(() => {
     if (!watched.comprar_pontos) return 0;
-    return (Number(watched.pontos_comprados) || 0) * (Number(watched.preco_por_ponto) || 0);
-  }, [watched.comprar_pontos, watched.pontos_comprados, watched.preco_por_ponto]);
+    return Number(watched.valor_total_compra) || 0;
+  }, [watched.comprar_pontos, watched.valor_total_compra]);
 
   // Quantidade total de pontos na origem (transferidos + comprados)
   const totalPontosOrigem = useMemo(() => {
@@ -132,7 +132,7 @@ export function TransferenciasPageClient() {
     }
     const pontosComprados = values.comprar_pontos ? (Number(values.pontos_comprados) || 0) : 0;
     const qtdOrigem = Number(values.quantidade_origem) + pontosComprados;
-    const custoPontos = pontosComprados * (Number(values.preco_por_ponto) || 0);
+    const custoPontos = values.comprar_pontos ? (Number(values.valor_total_compra) || 0) : 0;
     const custoTotal = Number(values.custo_reais ?? 0) + custoPontos;
     const dest = calcularTransferencia(
       qtdOrigem,
@@ -142,7 +142,7 @@ export function TransferenciasPageClient() {
     const obs = [
       values.observacao,
       pontosComprados > 0
-        ? `Compra de ${formatNumber(pontosComprados)} pontos (${formatBRL(Number(values.preco_por_ponto))}/ponto)`
+        ? `Compra de ${formatNumber(pontosComprados)} pontos (${formatBRL(custoPontos)})`
         : null,
     ]
       .filter(Boolean)
@@ -168,7 +168,7 @@ export function TransferenciasPageClient() {
         data: new Date().toISOString().slice(0, 10),
         comprar_pontos: false,
         pontos_comprados: 0,
-        preco_por_ponto: 0,
+        valor_total_compra: 0,
       });
       setOpen(false);
     } catch (e) {
@@ -299,19 +299,23 @@ export function TransferenciasPageClient() {
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-xs">Preço por ponto (R$)</Label>
+                          <Label className="text-xs">Valor total pago (R$)</Label>
                           <Input
                             type="number"
-                            step="0.001"
+                            step="0.01"
                             min={0}
                             placeholder="0,00"
-                            {...register("preco_por_ponto", { valueAsNumber: true })}
+                            {...register("valor_total_compra", { valueAsNumber: true })}
                           />
                         </div>
                         <div className="col-span-2 rounded bg-muted/50 px-3 py-2 text-xs space-y-0.5">
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Custo da compra:</span>
-                            <span className="font-mono">{formatBRL(custoPontosComprados)}</span>
+                            <span className="text-muted-foreground">Preço unitário:</span>
+                            <span className="font-mono">
+                              {(Number(watched.pontos_comprados) || 0) > 0
+                                ? formatBRL((Number(watched.valor_total_compra) || 0) / (Number(watched.pontos_comprados) || 1))
+                                : "—"}
+                            </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Total de pontos na origem:</span>
@@ -407,7 +411,7 @@ export function TransferenciasPageClient() {
                     {formatNumber(t.quantidade_origem)}
                   </TableCell>
                   <TableCell className="text-right">
-                    {Number(t.bonus_percentual) > 0 ? `+${t.bonus_percentual}%` : "—"}
+                    {Number(t.bonus_percentual) > 0 ? `+${t.bonus_percentual}%` : "���"}
                   </TableCell>
                   <TableCell className="text-right font-mono font-semibold">
                     {formatNumber(t.quantidade_destino)}
