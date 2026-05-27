@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeftRight, Plus, Trash2 } from "lucide-react";
+import { ArrowLeftRight, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
@@ -38,6 +38,9 @@ import { useProgramas } from "@/lib/queries/programas";
 import { calcularTransferencia } from "@/lib/calculations";
 import { formatBRL, formatDate, formatNumber } from "@/lib/utils";
 
+// Programas que permitem compra de pontos para transferência
+const PROGRAMAS_COMPRA_PONTOS = ["esfera", "livelo"];
+
 interface FormValues {
   conta_origem_id: string;
   conta_destino_id: string;
@@ -47,6 +50,10 @@ interface FormValues {
   custo_reais: number;
   data: string;
   observacao?: string;
+  // Compra de pontos (Esfera / Livelo)
+  comprar_pontos: boolean;
+  pontos_comprados: number;
+  preco_por_ponto: number;
 }
 
 export function TransferenciasPageClient() {
@@ -63,6 +70,9 @@ export function TransferenciasPageClient() {
       bonus_percentual: 0,
       custo_reais: 0,
       data: new Date().toISOString().slice(0, 10),
+      comprar_pontos: false,
+      pontos_comprados: 0,
+      preco_por_ponto: 0,
     },
   });
   const { register, handleSubmit, control, reset, formState } = form;
@@ -74,33 +84,80 @@ export function TransferenciasPageClient() {
     Number(watched.bonus_percentual) || 0
   );
 
+  const programaOrigem = useMemo(() => {
+    const conta = contas?.find((c) => c.id === watched.conta_origem_id);
+    return programas?.find((p) => p.id === conta?.programa_id);
+  }, [contas, programas, watched.conta_origem_id]);
+
   const programaDestino = useMemo(() => {
     const conta = contas?.find((c) => c.id === watched.conta_destino_id);
     return programas?.find((p) => p.id === conta?.programa_id);
   }, [contas, programas, watched.conta_destino_id]);
+
+  // Verifica se o programa de origem suporta compra de pontos
+  const permiteCompraPontos = useMemo(() => {
+    if (!programaOrigem) return false;
+    return PROGRAMAS_COMPRA_PONTOS.some((p) =>
+      programaOrigem.nome.toLowerCase().includes(p)
+    );
+  }, [programaOrigem]);
+
+  // Custo da compra de pontos
+  const custoPontosComprados = useMemo(() => {
+    if (!watched.comprar_pontos) return 0;
+    return (Number(watched.pontos_comprados) || 0) * (Number(watched.preco_por_ponto) || 0);
+  }, [watched.comprar_pontos, watched.pontos_comprados, watched.preco_por_ponto]);
+
+  // Quantidade total de pontos na origem (transferidos + comprados)
+  const totalPontosOrigem = useMemo(() => {
+    const base = Number(watched.quantidade_origem) || 0;
+    if (!watched.comprar_pontos) return base;
+    return base + (Number(watched.pontos_comprados) || 0);
+  }, [watched.comprar_pontos, watched.quantidade_origem, watched.pontos_comprados]);
+
+  // Quantidade de milhas no destino considerando pontos comprados
+  const qtdDestinoTotal = calcularTransferencia(
+    totalPontosOrigem,
+    Number(watched.taxa_conversao) || 1,
+    Number(watched.bonus_percentual) || 0
+  );
+
+  // Custo total = custo manual + custo dos pontos comprados
+  const custoTotal = (Number(watched.custo_reais) || 0) + custoPontosComprados;
 
   const onSubmit = async (values: FormValues) => {
     if (values.conta_origem_id === values.conta_destino_id) {
       toast.error("Conta de origem e destino não podem ser iguais");
       return;
     }
-    const qtd = Number(values.quantidade_origem);
+    const pontosComprados = values.comprar_pontos ? (Number(values.pontos_comprados) || 0) : 0;
+    const qtdOrigem = Number(values.quantidade_origem) + pontosComprados;
+    const custoPontos = pontosComprados * (Number(values.preco_por_ponto) || 0);
+    const custoTotal = Number(values.custo_reais ?? 0) + custoPontos;
     const dest = calcularTransferencia(
-      qtd,
+      qtdOrigem,
       Number(values.taxa_conversao),
       Number(values.bonus_percentual)
     );
+    const obs = [
+      values.observacao,
+      pontosComprados > 0
+        ? `Compra de ${formatNumber(pontosComprados)} pontos (${formatBRL(Number(values.preco_por_ponto))}/ponto)`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" | ") || null;
     try {
       await createMut.mutateAsync({
         conta_origem_id: values.conta_origem_id,
         conta_destino_id: values.conta_destino_id,
-        quantidade_origem: qtd,
+        quantidade_origem: qtdOrigem,
         quantidade_destino: dest,
         bonus_percentual: Number(values.bonus_percentual),
         taxa_conversao: Number(values.taxa_conversao),
-        custo_reais: Number(values.custo_reais ?? 0),
+        custo_reais: custoTotal,
         data: values.data,
-        observacao: values.observacao || null,
+        observacao: obs,
         validade_meses_destino: programaDestino?.validade_meses,
       });
       toast.success(`Transferência registrada: ${formatNumber(dest)} milhas creditadas`);
@@ -109,6 +166,9 @@ export function TransferenciasPageClient() {
         bonus_percentual: 0,
         custo_reais: 0,
         data: new Date().toISOString().slice(0, 10),
+        comprar_pontos: false,
+        pontos_comprados: 0,
+        preco_por_ponto: 0,
       });
       setOpen(false);
     } catch (e) {
@@ -214,15 +274,78 @@ export function TransferenciasPageClient() {
                   <Textarea {...register("observacao")} rows={2} />
                 </div>
 
+                {/* Seção de compra de pontos — Esfera / Livelo */}
+                {permiteCompraPontos && (
+                  <div className="rounded-md border p-3 space-y-3">
+                    <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="rounded"
+                        {...register("comprar_pontos")}
+                      />
+                      <ShoppingCart className="h-4 w-4 text-emerald-600" />
+                      Comprar pontos {programaOrigem?.nome} para transferir
+                    </label>
+                    {watched.comprar_pontos && (
+                      <div className="grid grid-cols-2 gap-3 pt-1">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Pontos a comprar</Label>
+                          <Input
+                            type="number"
+                            step="any"
+                            min={0}
+                            placeholder="0"
+                            {...register("pontos_comprados", { valueAsNumber: true })}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Preço por ponto (R$)</Label>
+                          <Input
+                            type="number"
+                            step="0.001"
+                            min={0}
+                            placeholder="0,00"
+                            {...register("preco_por_ponto", { valueAsNumber: true })}
+                          />
+                        </div>
+                        <div className="col-span-2 rounded bg-muted/50 px-3 py-2 text-xs space-y-0.5">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Custo da compra:</span>
+                            <span className="font-mono">{formatBRL(custoPontosComprados)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Total de pontos na origem:</span>
+                            <span className="font-mono">{formatNumber(totalPontosOrigem)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="rounded-md border bg-muted/50 p-3 text-sm space-y-1">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Milhas no destino:</span>
-                    <span className="font-mono font-semibold">{formatNumber(qtdDestino)}</span>
+                    <span className="font-mono font-semibold">{formatNumber(qtdDestinoTotal)}</span>
                   </div>
                   {programaDestino && (
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Validade no destino:</span>
                       <span>{programaDestino.validade_meses} meses</span>
+                    </div>
+                  )}
+                  {custoTotal > 0 && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Custo total:</span>
+                      <span className="font-mono">{formatBRL(custoTotal)}</span>
+                    </div>
+                  )}
+                  {watched.comprar_pontos && custoTotal > 0 && qtdDestinoTotal > 0 && (
+                    <div className="flex justify-between text-xs border-t pt-1 mt-1">
+                      <span className="text-muted-foreground">R$/milheiro efetivo:</span>
+                      <span className="font-mono">
+                        {formatBRL((custoTotal / qtdDestinoTotal) * 1000)}
+                      </span>
                     </div>
                   )}
                 </div>
