@@ -11,11 +11,6 @@ interface DistribuicaoChartProps {
 
 export function DistribuicaoChart({ data }: DistribuicaoChartProps) {
   const filtered = data.filter((d) => d.value > 0);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   return (
     <Card>
@@ -27,13 +22,9 @@ export function DistribuicaoChart({ data }: DistribuicaoChartProps) {
           <p className="text-sm text-muted-foreground py-12 text-center">
             Sem dados para exibir.
           </p>
-        ) : !mounted ? (
-          <div className="h-64 flex items-center justify-center">
-            <p className="text-sm text-muted-foreground">Carregando gráfico...</p>
-          </div>
         ) : (
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+          <>
+            <ResponsiveContainer width="100%" height={256}>
               <PieChart>
                 <Pie
                   data={filtered}
@@ -50,9 +41,7 @@ export function DistribuicaoChart({ data }: DistribuicaoChartProps) {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value) =>
-                    formatNumber(Number(value) || 0) + " milhas"
-                  }
+                  formatter={(value) => formatNumber(Number(value) || 0) + " milhas"}
                   contentStyle={{
                     background: "hsl(var(--card))",
                     border: "1px solid hsl(var(--border))",
@@ -76,7 +65,7 @@ export function DistribuicaoChart({ data }: DistribuicaoChartProps) {
                 </div>
               ))}
             </div>
-          </div>
+          </>
         )}
       </CardContent>
     </Card>
