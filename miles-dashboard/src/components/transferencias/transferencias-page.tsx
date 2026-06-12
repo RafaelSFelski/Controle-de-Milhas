@@ -158,6 +158,7 @@ export function TransferenciasPageClient() {
         data: values.data,
         observacao: obs,
         validade_meses_destino: programaDestino?.validade_meses,
+        pontos_comprados: pontosComprados > 0 ? pontosComprados : null,
       });
       toast.success(`Transferência registrada: ${formatNumber(dest)} milhas creditadas`);
       reset({

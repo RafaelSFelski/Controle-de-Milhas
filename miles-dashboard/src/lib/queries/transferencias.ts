@@ -91,6 +91,8 @@ export interface CreateTransferenciaInput {
   observacao?: string | null;
   /** Validade em meses do programa destino — usada para calcular data_expiracao do crédito gerado. */
   validade_meses_destino?: number | null;
+  /** Quantidade de pontos comprados (será debitado da conta de origem) */
+  pontos_comprados?: number | null;
 }
 
 function calcularDataExpiracaoDestino(
@@ -122,6 +124,7 @@ export function useCreateTransferencia() {
         p_data: input.data,
         p_observacao: input.observacao ?? null,
         p_data_expiracao_destino: dataExpiracaoDestino,
+        p_pontos_comprados: input.pontos_comprados ?? 0,
       });
       if (error) throw error;
       return data as string;
