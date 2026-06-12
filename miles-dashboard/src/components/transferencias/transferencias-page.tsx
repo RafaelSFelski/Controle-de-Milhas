@@ -108,19 +108,18 @@ export function TransferenciasPageClient() {
     return Number(watched.valor_total_compra) || 0;
   }, [watched.comprar_pontos, watched.valor_total_compra]);
 
-  // Quantidade total de pontos na origem (transferidos + comprados)
-  const totalPontosOrigem = useMemo(() => {
-    const base = Number(watched.quantidade_origem) || 0;
-    if (!watched.comprar_pontos) return base;
-    return base + (Number(watched.pontos_comprados) || 0);
-  }, [watched.comprar_pontos, watched.quantidade_origem, watched.pontos_comprados]);
-
-  // Quantidade de milhas no destino considerando pontos comprados
+  // Quantidade de milhas no destino (apenas da quantidade original transferida)
   const qtdDestinoTotal = calcularTransferencia(
-    totalPontosOrigem,
+    Number(watched.quantidade_origem) || 0,
     Number(watched.taxa_conversao) || 1,
     Number(watched.bonus_percentual) || 0
   );
+
+  // Informação: total de pontos que serão comprados (apenas para exibição)
+  const totalPontosComprados = useMemo(() => {
+    if (!watched.comprar_pontos) return 0;
+    return Number(watched.pontos_comprados) || 0;
+  }, [watched.comprar_pontos, watched.pontos_comprados]);
 
   // Custo total = custo manual + custo dos pontos comprados
   const custoTotal = (Number(watched.custo_reais) || 0) + custoPontosComprados;
@@ -131,9 +130,9 @@ export function TransferenciasPageClient() {
       return;
     }
     const pontosComprados = values.comprar_pontos ? (Number(values.pontos_comprados) || 0) : 0;
-    const qtdOrigem = Number(values.quantidade_origem) + pontosComprados;
     const custoPontos = values.comprar_pontos ? (Number(values.valor_total_compra) || 0) : 0;
     const custoTotal = Number(values.custo_reais ?? 0) + custoPontos;
+    const qtdOrigem = Number(values.quantidade_origem);
     const dest = calcularTransferencia(
       qtdOrigem,
       Number(values.taxa_conversao),
@@ -318,8 +317,8 @@ export function TransferenciasPageClient() {
                             </span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Total de pontos na origem:</span>
-                            <span className="font-mono">{formatNumber(totalPontosOrigem)}</span>
+                            <span className="text-muted-foreground">Pontos a comprar:</span>
+                            <span className="font-mono">{formatNumber(totalPontosComprados)}</span>
                           </div>
                         </div>
                       </div>
