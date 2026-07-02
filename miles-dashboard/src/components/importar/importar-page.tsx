@@ -26,6 +26,17 @@ export function ImportarPage() {
   const [importing, setImporting] = useState(false);
   const [importLog, setImportLog] = useState<string[]>([]);
 
+  // Normalizar nome do programa
+  const normalizarPrograma = (programa: string): string => {
+    const prog = programa.toLowerCase().trim();
+    if (prog.includes("all accor") || prog.includes("accor")) return "Accor";
+    if (prog.includes("azul")) return "Azul";
+    if (prog.includes("livelo")) return "Livelo";
+    if (prog.includes("gol") || prog.includes("smiles")) return "GOL Smiles";
+    if (prog.includes("esfera")) return "Esfera";
+    return programa;
+  };
+
   // Mapear tipo de movimentação para o tipo esperado no BD
   const mapearTipo = (tipo: string): string => {
     const tipoBaixo = tipo.toLowerCase().trim();
@@ -36,6 +47,35 @@ export function ImportarPage() {
     if (tipoBaixo.includes("bonus")) return "bonus";
     if (tipoBaixo.includes("reativação") || tipoBaixo.includes("reativacao")) return "reativacao";
     return tipo;
+  };
+
+  // Detectar índices de colunas baseado no header
+  const detectarColunas = (header: string[]): { [key: string]: number } => {
+    const indices: { [key: string]: number } = {
+      programa: -1,
+      tipo: -1,
+      valor: -1,
+      quantidade: -1,
+      data: -1,
+    };
+
+    for (let i = 0; i < header.length; i++) {
+      const col = header[i].toLowerCase().trim();
+      if (col.includes("programa") || col.includes("fidelida")) indices.programa = i;
+      if (col.includes("tipo") || col.includes("tipo de")) indices.tipo = i;
+      if (col.includes("valor") || col.includes("pago") || col.includes("r$")) indices.valor = i;
+      if (col.includes("quantidade") || col.includes("milhas") || col.includes("pontos")) indices.quantidade = i;
+      if (col.includes("data")) indices.data = i;
+    }
+
+    return indices;
+  };
+
+  const isValidDate = (dateStr: string): boolean => {
+    const parts = dateStr.split("/");
+    if (parts.length !== 3) return false;
+    const [dia, mes, ano] = parts;
+    return /^\d{1,2}$/.test(dia) && /^\d{1,2}$/.test(mes) && /^\d{2,4}$/.test(ano);
   };
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,26 +89,49 @@ export function ImportarPage() {
         const lines = csv.split("\n");
         const newRows: RowData[] = [];
 
-        // Pular header (primeira linha)
+        if (lines.length < 2) {
+          toast.error("Arquivo vazio");
+          return;
+        }
+
+        // Parse header
+        const headerParts = lines[0].split(",").map((p) => p.trim());
+        const colIndices = detectarColunas(headerParts);
+
+        // Validar se encontrou todas as colunas
+        if (Object.values(colIndices).some((idx) => idx === -1)) {
+          toast.warning(
+            "Não foi possível detectar todas as colunas automaticamente. Verifique a ordem: Programa, Tipo, Valor, Quantidade, Data"
+          );
+        }
+
+        // Processar linhas
         for (let i = 1; i < lines.length; i++) {
           const line = lines[i].trim();
           if (!line) continue;
 
-          // Parse CSV simples
           const parts = line.split(",").map((p) => p.trim());
           if (parts.length < 5) continue;
 
-          const [programa, tipo, valor, qtd, data] = parts;
-          if (!programa || !tipo) continue;
+          const programa = colIndices.programa >= 0 ? parts[colIndices.programa] : parts[0];
+          const tipo = colIndices.tipo >= 0 ? parts[colIndices.tipo] : parts[1];
+          const valor = colIndices.valor >= 0 ? parts[colIndices.valor] : parts[2];
+          const qtd = colIndices.quantidade >= 0 ? parts[colIndices.quantidade] : parts[3];
+          const data = colIndices.data >= 0 ? parts[colIndices.data] : parts[4];
 
-          const valorNum = parseFloat(valor.replace("R$", "").replace(".", "").replace(",", ".")) || 0;
-          const qtdNum = parseFloat(qtd.replace(".", "").replace(",", ".")) || 0;
+          if (!programa || !tipo || !data) continue;
+
+          // Limpar e parsear valores
+          const valorNum = parseFloat(valor.replace("R$", "").replace(/\./g, "").replace(",", ".")) || 0;
+          const qtdNum = parseFloat(qtd.replace(/\./g, "").replace(",", ".")) || 0;
+
+          if (!isValidDate(data)) continue;
 
           newRows.push({
-            programa: programa.trim(),
+            programa: normalizarPrograma(programa),
             tipo: tipo.trim(),
-            valor_pago: valorNum,
-            quantidade: qtdNum,
+            valor_pago: Math.abs(valorNum),
+            quantidade: Math.abs(qtdNum),
             data: data.trim(),
           });
         }
