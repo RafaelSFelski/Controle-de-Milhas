@@ -102,8 +102,8 @@ async function main() {
     const data = parseDateBR(dataStr);
     if (!data) { console.warn(`Data inválida: "${dataStr}"`); skip++; continue; }
 
-    // Resgates são negativos
-    if (tipo === 'resgate') qtd = -Math.abs(qtd);
+    // Débitos (resgates) são negativos
+    if (tipo === 'debito') qtd = -Math.abs(qtd);
     else qtd = Math.abs(qtd);
 
     const validade = VALIDADE[programaNome.trim()] ?? 24;
