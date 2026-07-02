@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useContas } from "@/lib/queries/contas";
 import { useProgramas } from "@/lib/queries/programas";
 import { useCreateMovimentacao } from "@/lib/queries/movimentacoes";
+import type { TipoMovimentacao } from "@/types/database";
 
 interface RowData {
   programa: string;
@@ -37,16 +38,19 @@ export function ImportarPage() {
     return programa;
   };
 
-  // Mapear tipo de movimentação para o tipo esperado no BD
-  const mapearTipo = (tipo: string): string => {
-    const tipoBaixo = tipo.toLowerCase().trim();
-    if (tipoBaixo.includes("assinatura")) return "assinatura";
-    if (tipoBaixo.includes("transferencia")) return "transferencia";
-    if (tipoBaixo.includes("compra")) return "compra";
-    if (tipoBaixo.includes("resgate")) return "resgate";
-    if (tipoBaixo.includes("bonus")) return "bonus";
-    if (tipoBaixo.includes("reativação") || tipoBaixo.includes("reativacao")) return "reativacao";
-    return tipo;
+  // Mapear tipo de movimentação para TipoMovimentacao válido no BD
+  // Tipos válidos: "credito" | "debito" | "transferencia_saida" | "transferencia_entrada" | "expiracao" | "assinatura" | "ajuste"
+  const mapearTipo = (tipo: string): TipoMovimentacao => {
+    const t = tipo.toLowerCase().trim();
+    if (t.includes("assinatura")) return "assinatura";
+    if (t.includes("transferencia_entrada") || t === "transferencia entrada") return "transferencia_entrada";
+    if (t.includes("transferencia_saida") || t === "transferencia saida") return "transferencia_saida";
+    if (t.includes("transferencia") || t.includes("transferência")) return "transferencia_entrada";
+    if (t.includes("resgate")) return "debito";
+    if (t.includes("ajuste")) return "ajuste";
+    if (t.includes("expiracao") || t.includes("expiração")) return "expiracao";
+    // compra, bonus, reativação, etc. → crédito
+    return "credito";
   };
 
   // Detectar índices de colunas baseado no header
