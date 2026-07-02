@@ -35,6 +35,7 @@ import {
 } from "@/lib/queries/cotacoes";
 import { useProgramas } from "@/lib/queries/programas";
 import { formatBRL, formatDate } from "@/lib/utils";
+import { CustoMedioCard } from "./custo-medio-card";
 
 interface FormValues {
   programa_id: string;
@@ -136,6 +137,8 @@ export function CotacoesPageClient() {
           </Dialog>
         }
       />
+
+      <CustoMedioCard />
 
       {programas && programas.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
