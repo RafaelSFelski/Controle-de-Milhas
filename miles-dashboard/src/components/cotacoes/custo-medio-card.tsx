@@ -7,6 +7,7 @@ import { useTransferencias } from "@/lib/queries/transferencias";
 import { useCotacoesAtuais } from "@/lib/queries/cotacoes";
 import { useContas } from "@/lib/queries/contas";
 import { useProgramas } from "@/lib/queries/programas";
+import { useMovimentacoes } from "@/lib/queries/movimentacoes";
 import { formatBRL, formatNumber } from "@/lib/utils";
 
 interface ProgramaCusto {
@@ -40,9 +41,10 @@ export function CustoMedioCard() {
   const { data: cotacoes } = useCotacoesAtuais();
   const { data: contas } = useContas();
   const { data: programas } = useProgramas();
+  const { data: todasMovimentacoes } = useMovimentacoes();
 
   const custosPorPrograma = useMemo((): ProgramaCusto[] => {
-    if (!assinaturas || !programas || !contas) return [];
+    if (!programas || !contas) return [];
 
     const hoje = new Date().toISOString().slice(0, 10);
 
@@ -50,15 +52,21 @@ export function CustoMedioCard() {
     const map = new Map<string, {
       custoAss: number; milhasAss: number;
       custoTransf: number; milhasTransf: number;
+      milhasMovs: number; // milhas de contas sem assinatura nem transferência com custo
     }>();
 
     const getAcc = (id: string) =>
-      map.get(id) ?? { custoAss: 0, milhasAss: 0, custoTransf: 0, milhasTransf: 0 };
+      map.get(id) ?? { custoAss: 0, milhasAss: 0, custoTransf: 0, milhasTransf: 0, milhasMovs: 0 };
+
+    // Conjunto de programas que têm assinatura (para não duplicar milhas via movimentações)
+    const programasComAssinatura = new Set<string>();
 
     // --- 1. Assinaturas ---
-    for (const ass of assinaturas) {
+    for (const ass of assinaturas ?? []) {
       const programaId = ass.conta?.programa?.id;
       if (!programaId) continue;
+
+      programasComAssinatura.add(programaId);
 
       const fim = ass.data_fim ?? hoje;
       const meses = mesesEntre(ass.data_inicio, fim);
@@ -72,18 +80,36 @@ export function CustoMedioCard() {
     }
 
     // --- 2. Transferências com custo ---
+    const transferenciasComCusto = new Set<string>(); // conta_destino_id das transferências com custo
     for (const t of transferencias ?? []) {
       const custo = Number(t.custo_reais ?? 0);
       const milhas = Number(t.quantidade_destino ?? 0);
       if (custo <= 0 || milhas <= 0) continue;
 
-      // Custo atribuído ao programa destino (quem recebeu as milhas)
       const contaDest = contas.find((c) => c.id === t.conta_destino_id);
       const programaId = contaDest?.programa_id;
       if (!programaId) continue;
 
+      transferenciasComCusto.add(t.conta_destino_id);
       const acc = getAcc(programaId);
       map.set(programaId, { ...acc, custoTransf: acc.custoTransf + custo, milhasTransf: acc.milhasTransf + milhas });
+    }
+
+    // --- 3. Movimentações diretas (contas sem assinatura nem custo de transferência registrado) ---
+    // Isso garante que programas como All Accor apareçam com seu saldo de milhas
+    for (const mov of todasMovimentacoes ?? []) {
+      const qtd = Number(mov.quantidade ?? 0);
+      if (qtd <= 0) continue; // ignorar débitos
+
+      const conta = contas.find((c) => c.id === mov.conta_id);
+      const programaId = conta?.programa_id;
+      if (!programaId) continue;
+
+      // Só usar movimentações para programas sem assinatura
+      if (programasComAssinatura.has(programaId)) continue;
+
+      const acc = getAcc(programaId);
+      map.set(programaId, { ...acc, milhasMovs: acc.milhasMovs + qtd });
     }
 
     const cotacaoMap = new Map<string, number>();
@@ -93,10 +119,11 @@ export function CustoMedioCard() {
       .map(([programaId, acc]): ProgramaCusto => {
         const prog = programas.find((p) => p.id === programaId);
         const totalPago = acc.custoAss + acc.custoTransf;
-        const totalMilhas = acc.milhasAss + acc.milhasTransf;
-        const custoMilheiro = totalMilhas > 0 ? (totalPago / totalMilhas) * 1000 : 0;
+        const totalMilhas = acc.milhasAss + acc.milhasTransf + acc.milhasMovs;
+        // Se não há custo registrado, não calcular custo médio (mostrar como sem dados)
+        const custoMilheiro = totalPago > 0 && totalMilhas > 0 ? (totalPago / totalMilhas) * 1000 : 0;
         const cotacaoAtual = cotacaoMap.get(programaId) ?? null;
-        const ganhoPerda = cotacaoAtual !== null ? cotacaoAtual - custoMilheiro : null;
+        const ganhoPerda = cotacaoAtual !== null && custoMilheiro > 0 ? cotacaoAtual - custoMilheiro : null;
 
         return {
           programaId,
@@ -114,8 +141,13 @@ export function CustoMedioCard() {
         };
       })
       .filter((p) => p.totalMilhas > 0)
-      .sort((a, b) => a.custoMilheiro - b.custoMilheiro);
-  }, [assinaturas, transferencias, cotacoes, contas, programas]);
+      .sort((a, b) => {
+        // Programas sem custo vão ao final
+        if (a.custoMilheiro === 0 && b.custoMilheiro > 0) return 1;
+        if (b.custoMilheiro === 0 && a.custoMilheiro > 0) return -1;
+        return a.custoMilheiro - b.custoMilheiro;
+      });
+  }, [assinaturas, transferencias, cotacoes, contas, programas, todasMovimentacoes]);
 
   if (!custosPorPrograma.length) return null;
 
@@ -177,7 +209,11 @@ export function CustoMedioCard() {
             {/* Custo médio */}
             <div className="sm:text-right">
               <p className="text-xs text-muted-foreground sm:hidden">Custo/milheiro</p>
-              <p className="font-mono text-sm font-semibold">{formatBRL(p.custoMilheiro)}</p>
+              {p.custoMilheiro > 0 ? (
+                <p className="font-mono text-sm font-semibold">{formatBRL(p.custoMilheiro)}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">Sem custo registrado</p>
+              )}
             </div>
 
             {/* Cotação mercado */}
