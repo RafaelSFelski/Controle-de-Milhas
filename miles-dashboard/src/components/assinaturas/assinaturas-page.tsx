@@ -153,7 +153,6 @@ export function AssinaturasPageClient() {
     handleSubmit: handleEditSubmit,
     reset: resetEdit,
     formState: formStateEdit,
-    control: controlEdit,
   } = editForm;
 
   const watched = useWatch({ control });

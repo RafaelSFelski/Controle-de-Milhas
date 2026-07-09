@@ -78,11 +78,6 @@ export function TransferenciasPageClient() {
   const { register, handleSubmit, control, reset, formState } = form;
 
   const watched = useWatch({ control });
-  const qtdDestino = calcularTransferencia(
-    Number(watched.quantidade_origem) || 0,
-    Number(watched.taxa_conversao) || 1,
-    Number(watched.bonus_percentual) || 0
-  );
 
   const programaOrigem = useMemo(() => {
     const conta = contas?.find((c) => c.id === watched.conta_origem_id);

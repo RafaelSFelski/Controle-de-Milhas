@@ -8,7 +8,15 @@ import { toast } from "sonner";
 import { useContas } from "@/lib/queries/contas";
 import { useProgramas } from "@/lib/queries/programas";
 import { useCreateMovimentacao } from "@/lib/queries/movimentacoes";
+import { formatNumber } from "@/lib/utils";
 import type { TipoMovimentacao } from "@/types/database";
+
+// Tipos cuja movimentação reduz o saldo (quantidade deve ser negativa).
+const TIPOS_NEGATIVOS: TipoMovimentacao[] = [
+  "debito",
+  "expiracao",
+  "transferencia_saida",
+];
 
 interface RowData {
   programa: string;
@@ -189,27 +197,19 @@ export function ImportarPage() {
         const [dia, mes, ano] = dataParts;
         const dataFormatada = `${ano}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
 
-        // Criar movimentação
+        // Criar movimentação (aplica o sinal correto conforme o tipo)
+        const tipoMov = mapearTipo(row.tipo);
+        const quantidade = TIPOS_NEGATIVOS.includes(tipoMov)
+          ? -Math.abs(row.quantidade)
+          : Math.abs(row.quantidade);
         await createMovMut.mutateAsync({
           conta_id: conta.id,
-          tipo: mapearTipo(row.tipo),
-          quantidade: row.quantidade,
+          tipo: tipoMov,
+          quantidade,
           data: dataFormatada,
           data_expiracao: null,
           descricao: `Importação: ${row.tipo}`,
         });
-
-        // Registrar custo se houver
-        if (row.valor_pago > 0) {
-          await createMovMut.mutateAsync({
-            conta_id: conta.id,
-            tipo: "debito",
-            quantidade: -row.valor_pago,
-            data: dataFormatada,
-            data_expiracao: null,
-            descricao: `Custo de ${row.tipo}`,
-          });
-        }
 
         log.push(
           `✅ Linha ${i + 2}: ${formatNumber(row.quantidade)} milhas em ${row.programa}`
@@ -233,8 +233,6 @@ export function ImportarPage() {
       custo: rows.reduce((acc, r) => acc + r.valor_pago, 0),
     };
   }, [rows]);
-
-  const formatNumber = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

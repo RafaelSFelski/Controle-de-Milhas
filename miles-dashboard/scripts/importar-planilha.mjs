@@ -2,8 +2,6 @@ import { createClient } from '../node_modules/@supabase/supabase-js/dist/index.m
 import { readFileSync } from 'fs';
 
 // IDs do banco
-const TITULAR_ID = '1b423f61-d26a-44f6-a9cf-34564c431641'; // Rafael
-
 const PROGRAMAS = {
   'Azul Fidelidade': 'a0705232-1088-4a08-925d-7c5398a2de52',
   'GOL Smiles':      'b0bb3d55-5b1c-4901-969d-ed8f3c85d5c7',
@@ -28,11 +26,6 @@ const VALIDADE = {
   'Esfera':          24,
   'All Accor':       24,
 };
-
-function parseBRL(str) {
-  if (!str) return 0;
-  return parseFloat(str.replace('R$', '').replace(/\s/g, '').replace(/\./g, '').replace(',', '.').trim()) || 0;
-}
 
 function parseQtd(str) {
   if (!str) return 0;
@@ -87,7 +80,7 @@ async function main() {
     }
     parts.push(cur.trim());
 
-    const [programaNome, tipoRaw, valorStr, qtdStr, dataStr] = parts;
+    const [programaNome, tipoRaw, , qtdStr, dataStr] = parts;
     if (!programaNome || !tipoRaw || !dataStr) { skip++; continue; }
 
     const programaId = PROGRAMAS[programaNome.trim()];
@@ -97,7 +90,6 @@ async function main() {
     if (!contaId) { console.warn(`Sem conta para programa: "${programaNome}"`); skip++; continue; }
 
     const tipo = mapTipo(tipoRaw);
-    const valor = parseBRL(valorStr);
     let qtd = parseQtd(qtdStr);
     const data = parseDateBR(dataStr);
     if (!data) { console.warn(`Data inválida: "${dataStr}"`); skip++; continue; }
