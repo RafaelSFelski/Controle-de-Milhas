@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatNumber } from "@/lib/utils";
@@ -22,8 +23,8 @@ export function DistribuicaoChart({ data }: DistribuicaoChartProps) {
             Sem dados para exibir.
           </p>
         ) : (
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+          <>
+            <ResponsiveContainer width="100%" height={256}>
               <PieChart>
                 <Pie
                   data={filtered}
@@ -40,9 +41,7 @@ export function DistribuicaoChart({ data }: DistribuicaoChartProps) {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value) =>
-                    formatNumber(Number(value) || 0) + " milhas"
-                  }
+                  formatter={(value) => formatNumber(Number(value) || 0) + " milhas"}
                   contentStyle={{
                     background: "hsl(var(--card))",
                     border: "1px solid hsl(var(--border))",
@@ -66,7 +65,7 @@ export function DistribuicaoChart({ data }: DistribuicaoChartProps) {
                 </div>
               ))}
             </div>
-          </div>
+          </>
         )}
       </CardContent>
     </Card>

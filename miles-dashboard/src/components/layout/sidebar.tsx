@@ -13,6 +13,7 @@ import {
   Target,
   TrendingUp,
   BarChart3,
+  Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,7 @@ const items = [
   { href: "/metas", label: "Metas", icon: Target },
   { href: "/cotacoes", label: "Cotações", icon: TrendingUp },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3 },
+  { href: "/importar", label: "Importar", icon: Upload },
 ];
 
 export function Sidebar() {

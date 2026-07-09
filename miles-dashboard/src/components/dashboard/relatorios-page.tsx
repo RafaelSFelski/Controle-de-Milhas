@@ -125,31 +125,29 @@ export function RelatoriosPageClient() {
           {acumuloVsGasto.length === 0 ? (
             <p className="text-sm text-muted-foreground py-12 text-center">Sem dados.</p>
           ) : (
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={acumuloVsGasto}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="mes" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis
-                    tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v))}
-                    tick={{ fontSize: 11 }}
-                    stroke="hsl(var(--muted-foreground))"
-                  />
-                  <Tooltip
-                    formatter={(v) => formatNumber(Number(v) || 0)}
-                    contentStyle={{
-                      background: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: 6,
-                      color: "hsl(var(--foreground))",
-                    }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="entrada" name="Acúmulo" fill="#10b981" />
-                  <Bar dataKey="saida" name="Gasto" fill="#ef4444" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <ResponsiveContainer width="100%" height={288}>
+              <BarChart data={acumuloVsGasto}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="mes" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                <YAxis
+                  tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v))}
+                  tick={{ fontSize: 11 }}
+                  stroke="hsl(var(--muted-foreground))"
+                />
+                <Tooltip
+                  formatter={(v) => formatNumber(Number(v) || 0)}
+                  contentStyle={{
+                    background: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 6,
+                    color: "hsl(var(--foreground))",
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Bar dataKey="entrada" name="Acúmulo" fill="#10b981" />
+                <Bar dataKey="saida" name="Gasto" fill="#ef4444" />
+              </BarChart>
+            </ResponsiveContainer>
           )}
         </CardContent>
       </Card>

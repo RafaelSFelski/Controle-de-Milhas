@@ -79,6 +79,41 @@ export function useExpiracoes() {
   });
 }
 
+export function useUpdateMovimentacao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      conta_id: string;
+      tipo: TipoMovimentacao;
+      quantidade: number;
+      data: string;
+      data_expiracao?: string | null;
+      descricao?: string | null;
+    }) => {
+      const { data, error } = await getSupabase()
+        .from("movimentacoes")
+        .update({
+          conta_id: input.conta_id,
+          tipo: input.tipo,
+          quantidade: input.quantidade,
+          data: input.data,
+          data_expiracao: input.data_expiracao ?? null,
+          descricao: input.descricao ?? null,
+        })
+        .eq("id", input.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.movimentacoes() });
+      qc.invalidateQueries({ queryKey: queryKeys.contasComJoin });
+    },
+  });
+}
+
 export function useDeleteMovimentacao() {
   const qc = useQueryClient();
   return useMutation({

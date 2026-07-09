@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Activity, Plus, Trash2 } from "lucide-react";
+import { Activity, Pencil, Plus, Trash2 } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
@@ -33,7 +33,9 @@ import {
   useCreateMovimentacao,
   useDeleteMovimentacao,
   useMovimentacoes,
+  useUpdateMovimentacao,
 } from "@/lib/queries/movimentacoes";
+import type { Movimentacao } from "@/types/database";
 import {
   useContasComSaldo,
   type ContaComSaldo,
@@ -66,9 +68,12 @@ export function MovimentacoesPageClient() {
   const { data: movs, isLoading } = useMovimentacoes();
   const { data: contas } = useContasComSaldo();
   const createMut = useCreateMovimentacao();
+  const updateMut = useUpdateMovimentacao();
   const deleteMut = useDeleteMovimentacao();
-  const [open, setOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editingMov, setEditingMov] = useState<Movimentacao | null>(null);
 
+  // --- formulário de criação ---
   const { register, handleSubmit, control, reset, formState } = useForm<FormValues>({
     defaultValues: {
       tipo: "credito",
@@ -89,7 +94,7 @@ export function MovimentacoesPageClient() {
       ? calcularDataExpiracao(dataMov, validade).toISOString().slice(0, 10)
       : undefined;
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmitCreate = async (values: FormValues) => {
     const isDeb = values.tipo === "debito" || values.tipo === "expiracao";
     const qtd = isDeb ? -Math.abs(Number(values.quantidade)) : Math.abs(Number(values.quantidade));
     let exp: string | null = null;
@@ -115,7 +120,73 @@ export function MovimentacoesPageClient() {
         data: new Date().toISOString().slice(0, 10),
         calcular_expiracao_auto: true,
       });
-      setOpen(false);
+      setCreateOpen(false);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  // --- formulário de edição ---
+  const {
+    register: regEdit,
+    handleSubmit: handleEdit,
+    control: controlEdit,
+    reset: resetEdit,
+    formState: formStateEdit,
+  } = useForm<FormValues>();
+
+  const tipoEdit = useWatch({ control: controlEdit, name: "tipo" });
+  const contaIdEdit = useWatch({ control: controlEdit, name: "conta_id" });
+  const calcAutoEdit = useWatch({ control: controlEdit, name: "calcular_expiracao_auto" });
+  const dataMovEdit = useWatch({ control: controlEdit, name: "data" });
+
+  const contaSelEdit = contas?.find((c) => c.id === contaIdEdit);
+  const validadeEdit = contaSelEdit?.programa?.validade_meses ?? 24;
+  const expCalcEdit =
+    tipoEdit === "credito" && calcAutoEdit && dataMovEdit
+      ? calcularDataExpiracao(dataMovEdit, validadeEdit).toISOString().slice(0, 10)
+      : undefined;
+
+  const onOpenEdit = (mov: Movimentacao) => {
+    setEditingMov(mov);
+    const absQtd = Math.abs(Number(mov.quantidade));
+    resetEdit({
+      conta_id: mov.conta_id,
+      tipo: (["credito", "debito", "ajuste", "expiracao"].includes(mov.tipo)
+        ? mov.tipo
+        : "ajuste") as FormValues["tipo"],
+      quantidade: absQtd,
+      data: mov.data,
+      data_expiracao: mov.data_expiracao ?? "",
+      descricao: mov.descricao ?? "",
+      calcular_expiracao_auto: false,
+    });
+  };
+
+  const onSubmitEdit = async (values: FormValues) => {
+    if (!editingMov) return;
+    const isDeb = values.tipo === "debito" || values.tipo === "expiracao";
+    const qtd = isDeb ? -Math.abs(Number(values.quantidade)) : Math.abs(Number(values.quantidade));
+    let exp: string | null = null;
+    if (values.tipo === "credito") {
+      if (values.calcular_expiracao_auto && values.data) {
+        exp = calcularDataExpiracao(values.data, validadeEdit).toISOString().slice(0, 10);
+      } else if (values.data_expiracao) {
+        exp = values.data_expiracao;
+      }
+    }
+    try {
+      await updateMut.mutateAsync({
+        id: editingMov.id,
+        conta_id: values.conta_id,
+        tipo: values.tipo,
+        quantidade: qtd,
+        data: values.data,
+        data_expiracao: exp,
+        descricao: values.descricao || null,
+      });
+      toast.success("Movimentação atualizada");
+      setEditingMov(null);
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -134,7 +205,7 @@ export function MovimentacoesPageClient() {
         title="Movimentações"
         description="Registre créditos, débitos e ajustes nas suas contas"
         action={
-          <Dialog open={open} onOpenChange={setOpen}>
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
               <Button disabled={!contas?.length}>
                 <Plus className="h-4 w-4" /> Nova movimentação
@@ -144,7 +215,7 @@ export function MovimentacoesPageClient() {
               <DialogHeader>
                 <DialogTitle>Nova movimentação</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={handleSubmit(onSubmitCreate)} className="space-y-4">
                 <div className="space-y-1.5">
                   <Label>Conta *</Label>
                   <Select {...register("conta_id", { required: true })}>
@@ -204,7 +275,7 @@ export function MovimentacoesPageClient() {
                   <Textarea rows={2} {...register("descricao")} />
                 </div>
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
                     Cancelar
                   </Button>
                   <Button type="submit" disabled={formState.isSubmitting}>
@@ -216,6 +287,83 @@ export function MovimentacoesPageClient() {
           </Dialog>
         }
       />
+
+      {/* Dialog de edição */}
+      <Dialog open={!!editingMov} onOpenChange={(open) => { if (!open) setEditingMov(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar movimentação</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEdit(onSubmitEdit)} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Conta *</Label>
+              <Select {...regEdit("conta_id", { required: true })}>
+                <option value="">Selecione...</option>
+                {contas?.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.titular?.nome} · {c.programa?.nome}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>Tipo *</Label>
+                <Select {...regEdit("tipo", { required: true })}>
+                  <option value="credito">Crédito</option>
+                  <option value="debito">Débito</option>
+                  <option value="ajuste">Ajuste</option>
+                  <option value="expiracao">Expiração</option>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Quantidade *</Label>
+                <Input
+                  type="number"
+                  step="any"
+                  min={0}
+                  {...regEdit("quantidade", { required: true, valueAsNumber: true })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Data *</Label>
+                <Input type="date" {...regEdit("data", { required: true })} />
+              </div>
+            </div>
+            {tipoEdit === "credito" && (
+              <>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" {...regEdit("calcular_expiracao_auto")} />
+                  Calcular expiração automaticamente ({validadeEdit} meses)
+                </label>
+                {!calcAutoEdit && (
+                  <div className="space-y-1.5">
+                    <Label>Data expiração</Label>
+                    <Input type="date" {...regEdit("data_expiracao")} />
+                  </div>
+                )}
+                {calcAutoEdit && expCalcEdit && (
+                  <p className="text-xs text-muted-foreground">
+                    Expira em <span className="font-mono">{formatDate(expCalcEdit)}</span>
+                  </p>
+                )}
+              </>
+            )}
+            <div className="space-y-1.5">
+              <Label>Descrição</Label>
+              <Textarea rows={2} {...regEdit("descricao")} />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditingMov(null)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={formStateEdit.isSubmitting}>
+                Salvar
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Carregando...</p>
@@ -236,7 +384,7 @@ export function MovimentacoesPageClient() {
                 <TableHead className="text-right">Quantidade</TableHead>
                 <TableHead>Expira</TableHead>
                 <TableHead>Descrição</TableHead>
-                <TableHead className="w-12"></TableHead>
+                <TableHead className="w-24"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -244,6 +392,7 @@ export function MovimentacoesPageClient() {
                 const conta = lookup.get(m.conta_id);
                 const tipoMeta = TIPOS[m.tipo] ?? { label: m.tipo, variant: "outline" as const };
                 const isPositive = Number(m.quantidade) >= 0;
+                const editavel = !m.transferencia_id && !m.assinatura_id;
                 return (
                   <TableRow key={m.id}>
                     <TableCell>{formatDate(m.data)}</TableCell>
@@ -267,21 +416,34 @@ export function MovimentacoesPageClient() {
                       {m.descricao ?? "—"}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={async () => {
-                          if (!confirm("Excluir movimentação?")) return;
-                          try {
-                            await deleteMut.mutateAsync(m.id);
-                            toast.success("Removida");
-                          } catch (e) {
-                            toast.error((e as Error).message);
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        {editavel && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Editar"
+                            onClick={() => onOpenEdit(m)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Excluir"
+                          onClick={async () => {
+                            if (!confirm("Excluir movimentação?")) return;
+                            try {
+                              await deleteMut.mutateAsync(m.id);
+                              toast.success("Removida");
+                            } catch (e) {
+                              toast.error((e as Error).message);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

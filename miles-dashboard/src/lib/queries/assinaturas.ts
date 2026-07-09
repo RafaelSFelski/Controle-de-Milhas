@@ -101,6 +101,13 @@ export function useCreateAssinatura() {
 
       const assinatura = data as { id: string };
 
+      // Gera os créditos retroativos de todos os meses desde data_inicio até o mês atual
+      const { error: gerarErr } = await sb.rpc("gerar_creditos_retroativos_assinatura", {
+        p_assinatura_id: assinatura.id,
+      });
+      if (gerarErr) throw gerarErr;
+
+      // Credita o bônus de adesão one-time, se solicitado
       if (
         input.aplicar_bonus_adesao &&
         input.bonus_adesao &&
@@ -153,6 +160,116 @@ export function useUpdateAssinaturaStatus() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.assinaturas }),
+  });
+}
+
+export function useUpdateAssinatura() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      nome_plano: string;
+      valor_mensal: number;
+      dia_cobranca: number;
+      milhas_mensais: number;
+      data_inicio: string;
+      bonus_percentual: number;
+      bonus_fixo: number;
+      bonus_adesao: number;
+    }) => {
+      const { data, error } = await getSupabase()
+        .from("assinaturas")
+        .update({
+          nome_plano: input.nome_plano,
+          valor_mensal: input.valor_mensal,
+          dia_cobranca: input.dia_cobranca,
+          milhas_mensais: input.milhas_mensais,
+          data_inicio: input.data_inicio,
+          bonus_percentual: input.bonus_percentual,
+          bonus_fixo: input.bonus_fixo,
+          bonus_adesao: input.bonus_adesao,
+        })
+        .eq("id", input.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.assinaturas });
+      qc.invalidateQueries({ queryKey: queryKeys.movimentacoes() });
+      qc.invalidateQueries({ queryKey: queryKeys.contasComJoin });
+    },
+  });
+}
+
+export function useUpgradeAssinatura() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id_atual: string;
+      conta_id: string;
+      nome_plano: string;
+      valor_mensal: number;
+      dia_cobranca: number;
+      milhas_mensais: number;
+      data_inicio: string;
+      bonus_percentual: number;
+      bonus_fixo: number;
+      bonus_adesao: number;
+      aplicar_bonus_adesao: boolean;
+    }) => {
+      const sb = getSupabase();
+
+      // 1. Cancela a assinatura atual
+      const { error: cancelErr } = await sb
+        .from("assinaturas")
+        .update({ status: "cancelada", data_fim: new Date().toISOString().slice(0, 10) })
+        .eq("id", input.id_atual);
+      if (cancelErr) throw cancelErr;
+
+      // 2. Cria a nova assinatura
+      const { data, error: createErr } = await sb
+        .from("assinaturas")
+        .insert({
+          conta_id: input.conta_id,
+          nome_plano: input.nome_plano,
+          valor_mensal: input.valor_mensal,
+          dia_cobranca: input.dia_cobranca,
+          milhas_mensais: input.milhas_mensais,
+          data_inicio: input.data_inicio,
+          status: "ativa",
+          bonus_percentual: input.bonus_percentual,
+          bonus_fixo: input.bonus_fixo,
+          bonus_adesao: input.bonus_adesao,
+        })
+        .select()
+        .single();
+      if (createErr) throw createErr;
+
+      const nova = data as { id: string };
+
+      // 3. Gera créditos retroativos da nova assinatura (todos os meses desde data_inicio)
+      const { error: gerarErr } = await sb.rpc("gerar_creditos_retroativos_assinatura", {
+        p_assinatura_id: nova.id,
+      });
+      if (gerarErr) throw gerarErr;
+
+      // 4. Aplica bônus de adesão se solicitado
+      if (input.aplicar_bonus_adesao && input.bonus_adesao > 0) {
+        const { error: bonusErr } = await sb.rpc("aplicar_bonus_adesao_assinatura", {
+          p_assinatura_id: nova.id,
+        });
+        if (bonusErr) throw bonusErr;
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.assinaturas });
+      qc.invalidateQueries({ queryKey: queryKeys.movimentacoes() });
+      qc.invalidateQueries({ queryKey: queryKeys.contasComJoin });
+    },
   });
 }
 

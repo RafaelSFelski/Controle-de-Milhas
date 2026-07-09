@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Users } from "lucide-react";
+import { Pencil, Plus, Trash2, Users } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
@@ -30,7 +30,9 @@ import {
   useCreateTitular,
   useDeleteTitular,
   useTitulares,
+  useUpdateTitular,
 } from "@/lib/queries/titulares";
+import type { Titular } from "@/types/database";
 
 interface FormValues {
   nome: string;
@@ -41,11 +43,16 @@ interface FormValues {
 export function TitularesPageClient() {
   const { data, isLoading } = useTitulares();
   const createMut = useCreateTitular();
+  const updateMut = useUpdateTitular();
   const deleteMut = useDeleteTitular();
-  const [open, setOpen] = useState(false);
-  const { register, handleSubmit, reset, formState } = useForm<FormValues>();
 
-  const onSubmit = async (values: FormValues) => {
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editingTitular, setEditingTitular] = useState<Titular | null>(null);
+
+  const createForm = useForm<FormValues>();
+  const editForm = useForm<FormValues>();
+
+  const onSubmitCreate = async (values: FormValues) => {
     try {
       await createMut.mutateAsync({
         nome: values.nome.trim(),
@@ -53,8 +60,33 @@ export function TitularesPageClient() {
         email: values.email?.trim() || null,
       });
       toast.success("Titular criado");
-      reset();
-      setOpen(false);
+      createForm.reset();
+      setCreateOpen(false);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const onOpenEdit = (titular: Titular) => {
+    setEditingTitular(titular);
+    editForm.reset({
+      nome: titular.nome,
+      cpf: titular.cpf ?? "",
+      email: titular.email ?? "",
+    });
+  };
+
+  const onSubmitEdit = async (values: FormValues) => {
+    if (!editingTitular) return;
+    try {
+      await updateMut.mutateAsync({
+        id: editingTitular.id,
+        nome: values.nome.trim(),
+        cpf: values.cpf?.trim() || null,
+        email: values.email?.trim() || null,
+      });
+      toast.success("Titular atualizado");
+      setEditingTitular(null);
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -78,7 +110,7 @@ export function TitularesPageClient() {
         title="Titulares"
         description="Pessoas que possuem contas em programas de fidelidade"
         action={
-          <Dialog open={open} onOpenChange={setOpen}>
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4" /> Novo titular
@@ -88,30 +120,30 @@ export function TitularesPageClient() {
               <DialogHeader>
                 <DialogTitle>Novo titular</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={createForm.handleSubmit(onSubmitCreate)} className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="nome">Nome *</Label>
+                  <Label htmlFor="create-nome">Nome *</Label>
                   <Input
-                    id="nome"
-                    {...register("nome", { required: true })}
+                    id="create-nome"
+                    {...createForm.register("nome", { required: true })}
                     placeholder="João da Silva"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="cpf">CPF</Label>
-                    <Input id="cpf" {...register("cpf")} placeholder="000.000.000-00" />
+                    <Label htmlFor="create-cpf">CPF</Label>
+                    <Input id="create-cpf" {...createForm.register("cpf")} placeholder="000.000.000-00" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" {...register("email")} />
+                    <Label htmlFor="create-email">Email</Label>
+                    <Input id="create-email" type="email" {...createForm.register("email")} />
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit" disabled={formState.isSubmitting}>
+                  <Button type="submit" disabled={createForm.formState.isSubmitting}>
                     Salvar
                   </Button>
                 </DialogFooter>
@@ -120,6 +152,43 @@ export function TitularesPageClient() {
           </Dialog>
         }
       />
+
+      {/* Dialog de edição */}
+      <Dialog open={!!editingTitular} onOpenChange={(open) => { if (!open) setEditingTitular(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar titular</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={editForm.handleSubmit(onSubmitEdit)} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-nome">Nome *</Label>
+              <Input
+                id="edit-nome"
+                {...editForm.register("nome", { required: true })}
+                placeholder="João da Silva"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-cpf">CPF</Label>
+                <Input id="edit-cpf" {...editForm.register("cpf")} placeholder="000.000.000-00" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-email">Email</Label>
+                <Input id="edit-email" type="email" {...editForm.register("email")} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditingTitular(null)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={editForm.formState.isSubmitting}>
+                Salvar
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Carregando...</p>
@@ -137,7 +206,7 @@ export function TitularesPageClient() {
                 <TableHead>Nome</TableHead>
                 <TableHead>CPF</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead className="w-12"></TableHead>
+                <TableHead className="w-24"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -147,14 +216,24 @@ export function TitularesPageClient() {
                   <TableCell className="text-muted-foreground">{t.cpf ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{t.email ?? "—"}</TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onDelete(t.id, t.nome)}
-                      aria-label="Excluir"
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onOpenEdit(t)}
+                        aria-label="Editar"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onDelete(t.id, t.nome)}
+                        aria-label="Excluir"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
