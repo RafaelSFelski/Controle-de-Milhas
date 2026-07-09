@@ -42,6 +42,8 @@ No SQL Editor do Supabase, execute na ordem:
 
 1. `supabase/migrations/0001_init.sql` — cria todas as tabelas, views e RPCs.
 2. `supabase/migrations/0002_seed_programas.sql` — popula o catálogo de programas brasileiros.
+3. `supabase/migrations/0003_assinaturas_bonus.sql` — colunas de bônus e RPCs de assinatura.
+4. `supabase/migrations/0004_rpcs_faltantes.sql` — RPCs de crédito retroativo e compra de pontos.
 
 ### 3. Configure variáveis de ambiente
 
