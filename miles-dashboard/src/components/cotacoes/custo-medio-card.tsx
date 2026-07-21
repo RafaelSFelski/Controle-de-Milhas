@@ -8,6 +8,7 @@ import { useCotacoesAtuais } from "@/lib/queries/cotacoes";
 import { useContas } from "@/lib/queries/contas";
 import { useProgramas } from "@/lib/queries/programas";
 import { useMovimentacoes } from "@/lib/queries/movimentacoes";
+import { milhasEfetivasMensais } from "@/lib/calculations";
 import { formatBRL, formatNumber } from "@/lib/utils";
 
 interface ProgramaCusto {
@@ -71,8 +72,13 @@ export function CustoMedioCard() {
       const fim = ass.data_fim ?? hoje;
       const meses = mesesEntre(ass.data_inicio, fim);
       const pago = Number(ass.valor_mensal) * meses;
+      const milhasMensais = milhasEfetivasMensais(
+        Number(ass.milhas_mensais),
+        Number(ass.bonus_percentual),
+        Number(ass.bonus_fixo)
+      );
       const milhas =
-        (Number(ass.milhas_mensais) + Number(ass.bonus_fixo)) * meses +
+        milhasMensais * meses +
         (ass.bonus_adesao_creditado ? Number(ass.bonus_adesao) : 0);
 
       const acc = getAcc(programaId);
@@ -107,6 +113,8 @@ export function CustoMedioCard() {
 
       // Só usar movimentações para programas sem assinatura
       if (programasComAssinatura.has(programaId)) continue;
+      // Evita contar de novo milhas já contabilizadas via transferência com custo
+      if (transferenciasComCusto.has(mov.conta_id)) continue;
 
       const acc = getAcc(programaId);
       map.set(programaId, { ...acc, milhasMovs: acc.milhasMovs + qtd });

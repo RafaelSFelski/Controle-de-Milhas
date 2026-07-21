@@ -1,13 +1,14 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getSupabase } from "@/lib/supabase/client";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { Cotacao } from "@/types/database";
 import { queryKeys } from "./keys";
 
 export function useCotacoes() {
   return useQuery({
     queryKey: queryKeys.cotacoes,
+    enabled: isSupabaseConfigured(),
     queryFn: async (): Promise<Cotacao[]> => {
       const { data, error } = await getSupabase()
         .from("cotacoes")
@@ -25,6 +26,7 @@ export function useCotacoes() {
 export function useCotacoesAtuais() {
   return useQuery({
     queryKey: ["cotacoes", "atuais"] as const,
+    enabled: isSupabaseConfigured(),
     queryFn: async (): Promise<Cotacao[]> => {
       const { data, error } = await getSupabase()
         .from("cotacoes")

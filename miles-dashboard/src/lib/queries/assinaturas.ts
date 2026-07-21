@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getSupabase } from "@/lib/supabase/client";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { Assinatura, StatusAssinatura } from "@/types/database";
 import { queryKeys } from "./keys";
 
@@ -16,6 +16,7 @@ export interface AssinaturaJoin extends Assinatura {
 export function useAssinaturas() {
   return useQuery({
     queryKey: queryKeys.assinaturas,
+    enabled: isSupabaseConfigured(),
     queryFn: async (): Promise<AssinaturaJoin[]> => {
       const { data, error } = await getSupabase()
         .from("assinaturas")
@@ -283,7 +284,11 @@ export function useDeleteAssinatura() {
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.assinaturas }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.assinaturas });
+      qc.invalidateQueries({ queryKey: queryKeys.movimentacoes() });
+      qc.invalidateQueries({ queryKey: queryKeys.contasComJoin });
+    },
   });
 }
 

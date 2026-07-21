@@ -40,7 +40,7 @@ interface FormValues {
   titular_id?: string;
   descricao: string;
   quantidade_alvo: number;
-  data_alvo?: string;
+  data_alvo: string;
 }
 
 export function MetasPageClient() {
@@ -74,12 +74,16 @@ export function MetasPageClient() {
 
   const onSubmit = async (values: FormValues) => {
     try {
+      if (!values.data_alvo) {
+        toast.error("Informe a data alvo da meta");
+        return;
+      }
       await createMut.mutateAsync({
         conta_id: values.escopo === "conta" ? values.conta_id ?? null : null,
         titular_id: values.escopo === "titular" ? values.titular_id ?? null : null,
         descricao: values.descricao,
         quantidade_alvo: Number(values.quantidade_alvo),
-        data_alvo: values.data_alvo || null,
+        data_alvo: values.data_alvo,
       });
       toast.success("Meta criada");
       reset({ escopo: "conta" });
@@ -183,8 +187,11 @@ export function MetasPageClient() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Data alvo</Label>
-                    <Input type="date" {...register("data_alvo")} />
+                    <Label>Data alvo *</Label>
+                    <Input
+                      type="date"
+                      {...register("data_alvo", { required: true })}
+                    />
                   </div>
                 </div>
                 <DialogFooter>
