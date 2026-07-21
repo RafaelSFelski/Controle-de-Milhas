@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getSupabase } from "@/lib/supabase/client";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { Meta } from "@/types/database";
 import { queryKeys } from "./keys";
 
@@ -19,6 +19,7 @@ export interface MetaJoin extends Meta {
 export function useMetas() {
   return useQuery({
     queryKey: queryKeys.metas,
+    enabled: isSupabaseConfigured(),
     queryFn: async (): Promise<MetaJoin[]> => {
       const { data, error } = await getSupabase()
         .from("metas")
@@ -68,7 +69,8 @@ export interface CreateMetaInput {
   titular_id: string | null;
   descricao: string;
   quantidade_alvo: number;
-  data_alvo: string | null;
+  /** Obrigatório — coluna `data_alvo` é NOT NULL no Postgres. */
+  data_alvo: string;
 }
 
 export function useCreateMeta() {

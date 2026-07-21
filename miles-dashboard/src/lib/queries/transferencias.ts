@@ -1,7 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getSupabase } from "@/lib/supabase/client";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { parseDateOnly, toDateOnly } from "@/lib/utils";
 import type { Transferencia } from "@/types/database";
 import { queryKeys } from "./keys";
 
@@ -26,6 +27,7 @@ function pickOne<T>(v: T | T[] | null | undefined): T | null {
 export function useTransferencias() {
   return useQuery({
     queryKey: queryKeys.transferencias,
+    enabled: isSupabaseConfigured(),
     queryFn: async (): Promise<TransferenciaJoin[]> => {
       const { data, error } = await getSupabase()
         .from("transferencias")
@@ -100,9 +102,9 @@ function calcularDataExpiracaoDestino(
   validadeMeses?: number | null
 ): string | null {
   if (!validadeMeses || validadeMeses <= 0) return null;
-  const d = new Date(data);
+  const d = parseDateOnly(data);
   d.setMonth(d.getMonth() + validadeMeses);
-  return d.toISOString().slice(0, 10);
+  return toDateOnly(d);
 }
 
 export function useCreateTransferencia() {

@@ -1,13 +1,14 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getSupabase } from "@/lib/supabase/client";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { Movimentacao, TipoMovimentacao } from "@/types/database";
 import { queryKeys } from "./keys";
 
 export function useMovimentacoes(contaId?: string) {
   return useQuery({
     queryKey: queryKeys.movimentacoes(contaId),
+    enabled: isSupabaseConfigured(),
     queryFn: async (): Promise<Movimentacao[]> => {
       let q = getSupabase()
         .from("movimentacoes")
@@ -63,6 +64,7 @@ export function useCreateMovimentacao() {
 export function useExpiracoes() {
   return useQuery({
     queryKey: ["expiracoes"] as const,
+    enabled: isSupabaseConfigured(),
     queryFn: async (): Promise<Movimentacao[]> => {
       const hoje = new Date().toISOString().slice(0, 10);
       const { data, error } = await getSupabase()

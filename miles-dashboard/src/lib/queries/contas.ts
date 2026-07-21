@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getSupabase } from "@/lib/supabase/client";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { Conta, Programa, Titular } from "@/types/database";
 import { queryKeys } from "./keys";
 
@@ -19,6 +19,7 @@ function pickOne<T>(v: T | T[] | null | undefined): T | null {
 export function useContasComSaldo() {
   return useQuery({
     queryKey: queryKeys.contasComJoin,
+    enabled: isSupabaseConfigured(),
     queryFn: async (): Promise<ContaComSaldo[]> => {
       const sb = getSupabase();
       const [contasRes, saldosRes] = await Promise.all([

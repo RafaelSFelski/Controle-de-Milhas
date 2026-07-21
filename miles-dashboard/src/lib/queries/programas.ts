@@ -1,13 +1,14 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getSupabase } from "@/lib/supabase/client";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { CategoriaPrograma, Programa } from "@/types/database";
 import { queryKeys } from "./keys";
 
 export function useProgramas() {
   return useQuery({
     queryKey: queryKeys.programas,
+    enabled: isSupabaseConfigured(),
     queryFn: async (): Promise<Programa[]> => {
       const { data, error } = await getSupabase()
         .from("programas")
