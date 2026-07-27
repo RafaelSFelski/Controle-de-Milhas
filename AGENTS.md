@@ -6,10 +6,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Cursor Cloud specific instructions
 
-The app lives in `miles-dashboard/` (pnpm). It is a client-side Next.js app that talks
+The app lives at the repository root (pnpm). It is a client-side Next.js app that talks
 directly to Supabase (PostgreSQL + PostgREST + RPCs); there are no custom API routes.
-Standard commands (run inside `miles-dashboard/`): `pnpm dev`, `pnpm lint`, `pnpm build`
-(see `package.json` / `README.md`).
+Standard commands: `pnpm dev`, `pnpm lint`, `pnpm build` (see `package.json` / `README.md`).
 
 To run/test anything data-related you need a running Supabase instance. Docker and the
 Supabase CLI are already installed in the VM snapshot; the update script only refreshes
@@ -17,7 +16,7 @@ JS deps. Start the backing services manually at the start of a session:
 
 1. Start the Docker daemon (it does not auto-start here): `sudo dockerd &` then make the
    socket usable without sudo: `sudo chmod 666 /var/run/docker.sock`.
-2. Start local Supabase from `miles-dashboard/`: `supabase start` (first run pulls images;
+2. Start local Supabase from the repo root: `supabase start` (first run pulls images;
    applies the 4 SQL migrations in `supabase/migrations/`). Use `supabase status` to check,
    `supabase db reset` to reapply migrations from scratch.
 3. Start the app: `pnpm dev` (→ http://localhost:3000).
