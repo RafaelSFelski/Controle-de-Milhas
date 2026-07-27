@@ -29,12 +29,12 @@ O uso previsto é **pessoal**: banco compartilhado no Supabase, sem autenticaç�
 ## Estrutura do Projeto
 
 ```
-miles-dashboard/
+Controle-de-Milhas/                # raiz do repositório
 ├── supabase/
 │   ├── migrations/              # SQL: schema, seed e RPCs
 │   └── config.toml
 ├── docs/
-│   └── VISAO-PRODUTO.md           # este documento
+│   └── VISAO-PRODUTO.md         # este documento
 ├── src/
 │   ├── app/
 │   │   ├── layout.tsx             # Layout raiz + sidebar
