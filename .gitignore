@@ -1,2 +1,44 @@
-# Artefatos de ferramentas de IA (planos locais)
+# Artefatos de ferramentas de IA
 .kilo/
+
+# --- miles-dashboard (Next.js) ---
+
+# dependencies
+miles-dashboard/node_modules/
+miles-dashboard/.pnp
+miles-dashboard/.pnp.*
+miles-dashboard/.yarn/*
+!miles-dashboard/.yarn/patches
+!miles-dashboard/.yarn/plugins
+!miles-dashboard/.yarn/releases
+!miles-dashboard/.yarn/versions
+
+# testing
+miles-dashboard/coverage/
+
+# next.js
+miles-dashboard/.next/
+miles-dashboard/out/
+
+# production
+miles-dashboard/build/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+miles-dashboard/.env*
+
+# vercel
+miles-dashboard/.vercel/
+
+# typescript
+miles-dashboard/*.tsbuildinfo
+miles-dashboard/next-env.d.ts
