@@ -5,6 +5,7 @@ import { Upload, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { ConfigWarning } from "@/components/shared/config-warning";
 import { useContas } from "@/lib/queries/contas";
 import { useProgramas } from "@/lib/queries/programas";
 import { useCreateMovimentacao } from "@/lib/queries/movimentacoes";
@@ -26,6 +27,38 @@ interface RowData {
   data: string;
 }
 
+/** Mapeia nomes comuns da planilha para os nomes do seed (`0002_seed_programas.sql`). */
+function normalizarPrograma(programa: string): string {
+  const prog = programa.toLowerCase().trim();
+  if (prog.includes("all accor") || prog.includes("accor")) return "Accor";
+  if (prog.includes("tudoazul") || prog.includes("tudo azul") || prog.includes("azul")) {
+    return "TudoAzul";
+  }
+  if (prog.includes("livelo")) return "Livelo";
+  if (prog.includes("gol") || prog.includes("smiles")) return "Smiles";
+  if (prog.includes("esfera")) return "Esfera";
+  if (prog.includes("latam")) return "Latam Pass";
+  if (prog.includes("iupp")) return "Iupp";
+  if (prog.includes("hilton")) return "Hilton Honors";
+  if (prog.includes("marriott") || prog.includes("bonvoy")) return "Marriott Bonvoy";
+  if (prog.includes("lifemiles") || prog.includes("life miles")) return "LifeMiles";
+  if (prog.includes("membership") || prog.includes("amex")) return "Membership Rewards";
+  if (prog.includes("itaú") || prog.includes("itau")) return "Pontos Itaú";
+  if (prog.includes("atacadão") || prog.includes("atacadao")) return "Atacadão Pontos";
+  return programa.trim();
+}
+
+function parseDataBr(data: string): string | null {
+  const parts = data.split("/");
+  if (parts.length !== 3) return null;
+  const [dia, mes, anoRaw] = parts;
+  if (!/^\d{1,2}$/.test(dia) || !/^\d{1,2}$/.test(mes) || !/^\d{2,4}$/.test(anoRaw)) {
+    return null;
+  }
+  const ano = anoRaw.length === 2 ? `20${anoRaw}` : anoRaw;
+  return `${ano}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
+}
+
 export function ImportarPage() {
   const { data: contas } = useContas();
   const { data: programas } = useProgramas();
@@ -34,17 +67,6 @@ export function ImportarPage() {
   const [rows, setRows] = useState<RowData[]>([]);
   const [importing, setImporting] = useState(false);
   const [importLog, setImportLog] = useState<string[]>([]);
-
-  // Normalizar nome do programa
-  const normalizarPrograma = (programa: string): string => {
-    const prog = programa.toLowerCase().trim();
-    if (prog.includes("all accor") || prog.includes("accor")) return "Accor";
-    if (prog.includes("azul")) return "Azul";
-    if (prog.includes("livelo")) return "Livelo";
-    if (prog.includes("gol") || prog.includes("smiles")) return "GOL Smiles";
-    if (prog.includes("esfera")) return "Esfera";
-    return programa;
-  };
 
   // Mapear tipo de movimentação para TipoMovimentacao válido no BD
   // Tipos válidos: "credito" | "debito" | "transferencia_saida" | "transferencia_entrada" | "expiracao" | "assinatura" | "ajuste"
@@ -81,13 +103,6 @@ export function ImportarPage() {
     }
 
     return indices;
-  };
-
-  const isValidDate = (dateStr: string): boolean => {
-    const parts = dateStr.split("/");
-    if (parts.length !== 3) return false;
-    const [dia, mes, ano] = parts;
-    return /^\d{1,2}$/.test(dia) && /^\d{1,2}$/.test(mes) && /^\d{2,4}$/.test(ano);
   };
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -137,7 +152,7 @@ export function ImportarPage() {
           const valorNum = parseFloat(valor.replace("R$", "").replace(/\./g, "").replace(",", ".")) || 0;
           const qtdNum = parseFloat(qtd.replace(/\./g, "").replace(",", ".")) || 0;
 
-          if (!isValidDate(data)) continue;
+          if (!parseDataBr(data.trim())) continue;
 
           newRows.push({
             programa: normalizarPrograma(programa),
@@ -171,9 +186,12 @@ export function ImportarPage() {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       try {
-        // Encontrar a conta do programa
+        // Encontrar a conta do programa (match exato ou parcial)
         const programa = programas?.find(
-          (p) => p.nome.toLowerCase() === row.programa.toLowerCase()
+          (p) =>
+            p.nome.toLowerCase() === row.programa.toLowerCase() ||
+            p.nome.toLowerCase().includes(row.programa.toLowerCase()) ||
+            row.programa.toLowerCase().includes(p.nome.toLowerCase())
         );
         if (!programa) {
           log.push(`❌ Linha ${i + 2}: Programa "${row.programa}" não encontrado`);
@@ -188,14 +206,11 @@ export function ImportarPage() {
           continue;
         }
 
-        // Validar data
-        const dataParts = row.data.split("/");
-        if (dataParts.length !== 3) {
+        const dataFormatada = parseDataBr(row.data);
+        if (!dataFormatada) {
           log.push(`❌ Linha ${i + 2}: Data inválida "${row.data}"`);
           continue;
         }
-        const [dia, mes, ano] = dataParts;
-        const dataFormatada = `${ano}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
 
         // Criar movimentação (aplica o sinal correto conforme o tipo)
         const tipoMov = mapearTipo(row.tipo);
@@ -236,6 +251,7 @@ export function ImportarPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      <ConfigWarning />
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

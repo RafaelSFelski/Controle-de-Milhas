@@ -102,7 +102,8 @@ export interface Meta {
   titular_id: string | null;
   descricao: string;
   quantidade_alvo: number;
-  data_alvo: string | null;
+  /** NOT NULL no schema SQL. */
+  data_alvo: string;
   concluida: boolean;
   created_at: string;
 }
