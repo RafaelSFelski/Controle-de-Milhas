@@ -39,12 +39,11 @@ async function seed() {
 
     // 2. Inserir Programas
     console.log("🎫 Inserindo programas de milhas...");
-    const randomSuffix = Math.random().toString(36).substring(7);
     const { data: programas, error: progError } = await supabase
       .from("programas")
       .insert([
         {
-          nome: `LATAM Pass ${randomSuffix}`,
+          nome: "LATAM Pass",
           categoria: "aerea",
           cor: "#ffc72c",
           validade_meses: 36,
@@ -52,7 +51,7 @@ async function seed() {
           logo_url: null,
         },
         {
-          nome: `Smiles ${randomSuffix}`,
+          nome: "Smiles",
           categoria: "aerea",
           cor: "#0066cc",
           validade_meses: 24,
@@ -60,7 +59,7 @@ async function seed() {
           logo_url: null,
         },
         {
-          nome: `Nubank Rewards ${randomSuffix}`,
+          nome: "Nubank Rewards",
           categoria: "cartao",
           cor: "#6c0cc4",
           validade_meses: 12,
@@ -68,7 +67,7 @@ async function seed() {
           logo_url: null,
         },
         {
-          nome: `Bradesco Recompensas ${randomSuffix}`,
+          nome: "Bradesco Recompensas",
           categoria: "bancario",
           cor: "#ffc72c",
           validade_meses: 60,
