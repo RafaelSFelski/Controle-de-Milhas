@@ -10,6 +10,18 @@ The app lives at the repository root (pnpm). It is a client-side Next.js app tha
 directly to Supabase (PostgreSQL + PostgREST + RPCs); there are no custom API routes.
 Standard commands: `pnpm dev`, `pnpm lint`, `pnpm build` (see `package.json` / `README.md`).
 
+**Cursor Cloud Agent — update/install script:** the app is at the **repository root**, not in
+a `miles-dashboard/` subdirectory (removed in commit `4ddb8a9`). In
+[Cloud Agents → Environments](https://cursor.com/dashboard/cloud-agents), set the install
+script to:
+
+```bash
+pnpm install --frozen-lockfile
+```
+
+Do **not** use `cd miles-dashboard` — that path no longer exists and causes
+`INSTALL_FAILED` at VM startup (`cd: miles-dashboard: No such file or directory`).
+
 To run/test anything data-related you need a running Supabase instance. Docker and the
 Supabase CLI are already installed in the VM snapshot; the update script only refreshes
 JS deps. Start the backing services manually at the start of a session:
@@ -17,7 +29,7 @@ JS deps. Start the backing services manually at the start of a session:
 1. Start the Docker daemon (it does not auto-start here): `sudo dockerd &` then make the
    socket usable without sudo: `sudo chmod 666 /var/run/docker.sock`.
 2. Start local Supabase from the repo root: `supabase start` (first run pulls images;
-   applies the 4 SQL migrations in `supabase/migrations/`). Use `supabase status` to check,
+   applies the SQL migrations in `supabase/migrations/`). Use `supabase status` to check,
    `supabase db reset` to reapply migrations from scratch.
 3. Start the app: `pnpm dev` (→ http://localhost:3000).
 

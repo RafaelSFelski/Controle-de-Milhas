@@ -58,6 +58,17 @@ pnpm dev
 
 Acesse http://localhost:3000.
 
+## Cursor Cloud Agent
+
+Se você usa **Cloud Agents** no Cursor, configure o script de instalação/atualização do
+ambiente para rodar na **raiz do repositório** (não existe mais a pasta `miles-dashboard/`):
+
+```bash
+pnpm install --frozen-lockfile
+```
+
+Detalhes e gotchas do ambiente VM: **[AGENTS.md](AGENTS.md)**.
+
 ## Scripts
 
 ```bash
