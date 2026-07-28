@@ -13,5 +13,6 @@ insert into public.programas (nome, categoria, cor, validade_meses, is_default) 
   ('Pontos Itaú',            'bancario', '#EC7000', 24, true),
   ('Atacadão Pontos',        'varejo',   '#00529B', 12, true),
   ('Hilton Honors',          'hotel',    '#0F2F5F', 12, true),
-  ('Marriott Bonvoy',        'hotel',    '#A1996F', 24, true)
+  ('Marriott Bonvoy',        'hotel',    '#A1996F', 24, true),
+  ('All Accor',              'hotel',    '#252359', 24, true)
 on conflict (nome) do nothing;

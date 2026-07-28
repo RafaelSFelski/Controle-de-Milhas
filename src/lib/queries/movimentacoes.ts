@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
-import type { Movimentacao, TipoMovimentacao } from "@/types/database";
+import type { Movimentacao, OrigemCredito, TipoMovimentacao } from "@/types/database";
 import { queryKeys } from "./keys";
 
 export function useMovimentacoes(contaId?: string) {
@@ -31,6 +31,7 @@ export function useCreateMovimentacao() {
       quantidade: number;
       data: string;
       data_expiracao?: string | null;
+      origem?: OrigemCredito | null;
       descricao?: string | null;
     }) => {
       const { data, error } = await getSupabase()
@@ -41,6 +42,7 @@ export function useCreateMovimentacao() {
           quantidade: input.quantidade,
           data: input.data,
           data_expiracao: input.data_expiracao ?? null,
+          origem: input.origem ?? null,
           descricao: input.descricao ?? null,
           transferencia_id: null,
           assinatura_id: null,
@@ -91,6 +93,7 @@ export function useUpdateMovimentacao() {
       quantidade: number;
       data: string;
       data_expiracao?: string | null;
+      origem?: OrigemCredito | null;
       descricao?: string | null;
     }) => {
       const { data, error } = await getSupabase()
@@ -101,6 +104,7 @@ export function useUpdateMovimentacao() {
           quantidade: input.quantidade,
           data: input.data,
           data_expiracao: input.data_expiracao ?? null,
+          origem: input.origem ?? null,
           descricao: input.descricao ?? null,
         })
         .eq("id", input.id)

@@ -3,6 +3,8 @@
 export const queryKeys = {
   titulares: ["titulares"] as const,
   programas: ["programas"] as const,
+  regrasValidade: (programaId: string) => ["regras-validade", programaId] as const,
+  regrasValidadeAll: ["regras-validade"] as const,
   contas: ["contas"] as const,
   contasComJoin: ["contas", "join"] as const,
   saldos: ["saldos"] as const,

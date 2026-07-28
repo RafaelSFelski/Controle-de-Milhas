@@ -30,7 +30,7 @@ interface RowData {
 /** Mapeia nomes comuns da planilha para os nomes do seed (`0002_seed_programas.sql`). */
 function normalizarPrograma(programa: string): string {
   const prog = programa.toLowerCase().trim();
-  if (prog.includes("all accor") || prog.includes("accor")) return "Accor";
+  if (prog.includes("all accor") || prog.includes("accor")) return "All Accor";
   if (prog.includes("tudoazul") || prog.includes("tudo azul") || prog.includes("azul")) {
     return "TudoAzul";
   }

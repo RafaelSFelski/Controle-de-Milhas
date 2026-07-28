@@ -10,6 +10,18 @@ export type CategoriaPrograma =
   | "hotel"
   | "outro";
 
+export type UnidadePrograma = "milhas" | "pontos";
+
+export type OrigemCredito =
+  | "cartao"
+  | "compra"
+  | "transferencia"
+  | "assinatura"
+  | "promocao"
+  | "parceiro"
+  | "ajuste"
+  | "outro";
+
 export type TipoMovimentacao =
   | "credito"
   | "debito"
@@ -36,7 +48,17 @@ export interface Programa {
   cor: string;
   logo_url: string | null;
   validade_meses: number;
+  unidade: UnidadePrograma;
   is_default: boolean;
+  created_at: string;
+}
+
+export interface ProgramaRegraValidade {
+  id: string;
+  programa_id: string;
+  origem: OrigemCredito;
+  validade_meses: number;
+  descricao: string | null;
   created_at: string;
 }
 
@@ -55,6 +77,7 @@ export interface Movimentacao {
   quantidade: number;
   data: string;
   data_expiracao: string | null;
+  origem: OrigemCredito | null;
   descricao: string | null;
   transferencia_id: string | null;
   assinatura_id: string | null;

@@ -83,11 +83,23 @@ Controle-de-Milhas/                # raiz do repositório
 - `categoria` text (`aerea` | `cartao` | `bancario` | `varejo` | `hotel` | `outro`)
 - `cor` text (hex para UI)
 - `logo_url` text (opcional)
-- `validade_meses` int (validade padrão das milhas)
+- `validade_meses` int (validade padrão das milhas — fallback quando não há regra por origem)
 - `is_default` boolean (pré-cadastrado)
 - `created_at` timestamptz
 
-**Seed inicial:** Smiles, Latam Pass, TudoAzul, Livelo, Esfera, Iupp, LifeMiles, Membership Rewards (Amex), Pontos Itaú, Atacadão Pontos, Hilton Honors, Marriott Bonvoy.
+**Seed inicial:** Smiles, Latam Pass, TudoAzul, Livelo, Esfera, Iupp, LifeMiles, Membership Rewards (Amex), Pontos Itaú, Atacadão Pontos, Hilton Honors, Marriott Bonvoy, All Accor.
+
+### `programas_regras_validade`
+
+Regras de validade por origem dos pontos/milhas dentro de cada programa:
+
+- `programa_id` uuid FK → programas
+- `origem` text (`cartao` | `compra` | `transferencia` | `assinatura` | `promocao` | `parceiro` | `ajuste` | `outro`)
+- `validade_meses` int
+- `descricao` text (opcional)
+- UNIQUE(`programa_id`, `origem`)
+
+A função `validade_meses_programa(programa_id, origem)` resolve: regra específica → validade padrão do programa → 24 meses.
 
 ### `contas` (instância de programa para um titular)
 
@@ -108,6 +120,7 @@ O saldo **não** é coluna fixa — é calculado dinamicamente via `SUM(moviment
 - `quantidade` numeric (positivo = crédito, negativo = débito)
 - `data` date
 - `data_expiracao` date (NULL se não expira)
+- `origem` text (origem do crédito: cartão, compra, transferência, etc.)
 - `descricao` text
 - `transferencia_id` uuid FK → transferencias (nullable)
 - `assinatura_id` uuid FK → assinaturas (nullable)
