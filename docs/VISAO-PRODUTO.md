@@ -87,7 +87,7 @@ Controle-de-Milhas/                # raiz do repositório
 - `is_default` boolean (pré-cadastrado)
 - `created_at` timestamptz
 
-**Seed inicial:** Smiles, Latam Pass, TudoAzul, Livelo, Esfera, Iupp, LifeMiles, Membership Rewards (Amex), Pontos Itaú, Atacadão Pontos, Hilton Honors, Marriott Bonvoy.
+**Seed inicial:** Smiles, Latam Pass, TudoAzul, Livelo, Esfera, Iupp, LifeMiles, Membership Rewards (Amex), Pontos Itaú, Atacadão Pontos, Hilton Honors, Marriott Bonvoy, All Accor.
 
 ### `contas` (instância de programa para um titular)
 
