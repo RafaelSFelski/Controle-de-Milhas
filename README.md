@@ -14,12 +14,27 @@ Vá em [app.supabase.com](https://app.supabase.com) e crie um projeto.
 
 ### 2. Aplique as migrations
 
+**Opção A — Supabase CLI (recomendado para cloud):**
+
+```bash
+supabase login
+export SUPABASE_PROJECT_REF=seu-project-ref   # Settings → General → Reference ID
+./scripts/push-supabase-cloud.sh
+```
+
+**Opção B — SQL Editor (manual):**
+
 No SQL Editor do Supabase, execute na ordem:
 
 1. `supabase/migrations/0001_init.sql` — cria todas as tabelas, views e RPCs.
 2. `supabase/migrations/0002_seed_programas.sql` — popula o catálogo de programas brasileiros.
 3. `supabase/migrations/0003_assinaturas_bonus.sql` — colunas de bônus e RPCs de assinatura.
 4. `supabase/migrations/0004_rpcs_faltantes.sql` — RPCs de crédito retroativo e compra de pontos.
+5. `supabase/migrations/0005_programas_unidade.sql` — coluna `unidade` (milhas/pontos).
+6. `supabase/migrations/0006_seed_all_accor.sql` — programa All Accor no catálogo.
+7. `supabase/migrations/0007_regras_validade.sql` — validade por origem + RPCs atualizadas.
+
+> Se o banco cloud **já tem** as migrations 0001–0004, aplique apenas **0005, 0006 e 0007**.
 
 ### 3. Configure variáveis de ambiente
 
