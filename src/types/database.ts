@@ -12,6 +12,16 @@ export type CategoriaPrograma =
 
 export type UnidadePrograma = "milhas" | "pontos";
 
+export type OrigemCredito =
+  | "cartao"
+  | "compra"
+  | "transferencia"
+  | "assinatura"
+  | "promocao"
+  | "parceiro"
+  | "ajuste"
+  | "outro";
+
 export type TipoMovimentacao =
   | "credito"
   | "debito"
@@ -43,6 +53,15 @@ export interface Programa {
   created_at: string;
 }
 
+export interface ProgramaRegraValidade {
+  id: string;
+  programa_id: string;
+  origem: OrigemCredito;
+  validade_meses: number;
+  descricao: string | null;
+  created_at: string;
+}
+
 export interface Conta {
   id: string;
   titular_id: string;
@@ -58,6 +77,7 @@ export interface Movimentacao {
   quantidade: number;
   data: string;
   data_expiracao: string | null;
+  origem: OrigemCredito | null;
   descricao: string | null;
   transferencia_id: string | null;
   assinatura_id: string | null;

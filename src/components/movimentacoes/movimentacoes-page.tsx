@@ -41,8 +41,10 @@ import {
   type ContaComSaldo,
 } from "@/lib/queries/contas";
 import { calcularDataExpiracao } from "@/lib/calculations";
+import { useRegrasValidade } from "@/lib/queries/regras-validade";
+import { ORIGENS_CREDITO, labelOrigem, resolverValidadeMeses } from "@/lib/validade";
 import { formatDate, formatNumber } from "@/lib/utils";
-import type { TipoMovimentacao } from "@/types/database";
+import type { OrigemCredito, TipoMovimentacao } from "@/types/database";
 
 interface FormValues {
   conta_id: string;
@@ -50,6 +52,7 @@ interface FormValues {
   quantidade: number;
   data: string;
   data_expiracao?: string;
+  origem?: OrigemCredito;
   descricao?: string;
   calcular_expiracao_auto?: boolean;
 }
@@ -67,6 +70,7 @@ const TIPOS: Record<TipoMovimentacao, { label: string; variant: "default" | "sec
 export function MovimentacoesPageClient() {
   const { data: movs, isLoading } = useMovimentacoes();
   const { data: contas } = useContasComSaldo();
+  const { data: regrasValidade } = useRegrasValidade();
   const createMut = useCreateMovimentacao();
   const updateMut = useUpdateMovimentacao();
   const deleteMut = useDeleteMovimentacao();
@@ -79,16 +83,23 @@ export function MovimentacoesPageClient() {
       tipo: "credito",
       data: new Date().toISOString().slice(0, 10),
       calcular_expiracao_auto: true,
+      origem: "cartao",
     },
   });
 
   const tipo = useWatch({ control, name: "tipo" });
   const contaId = useWatch({ control, name: "conta_id" });
+  const origem = useWatch({ control, name: "origem" });
   const calcAuto = useWatch({ control, name: "calcular_expiracao_auto" });
   const dataMov = useWatch({ control, name: "data" });
 
   const contaSel = contas?.find((c) => c.id === contaId);
-  const validade = contaSel?.programa?.validade_meses ?? 24;
+  const regrasConta = useMemo(
+    () => (regrasValidade ?? []).filter((r) => r.programa_id === contaSel?.programa_id),
+    [regrasValidade, contaSel?.programa_id]
+  );
+  const validadePadrao = contaSel?.programa?.validade_meses ?? 24;
+  const validade = resolverValidadeMeses(regrasConta, origem, validadePadrao);
   const expCalc =
     tipo === "credito" && calcAuto && dataMov
       ? calcularDataExpiracao(dataMov, validade).toISOString().slice(0, 10)
@@ -112,6 +123,7 @@ export function MovimentacoesPageClient() {
         quantidade: qtd,
         data: values.data,
         data_expiracao: exp,
+        origem: values.tipo === "credito" ? values.origem ?? "cartao" : null,
         descricao: values.descricao || null,
       });
       toast.success("Movimentação registrada");
@@ -119,6 +131,7 @@ export function MovimentacoesPageClient() {
         tipo: "credito",
         data: new Date().toISOString().slice(0, 10),
         calcular_expiracao_auto: true,
+        origem: "cartao",
       });
       setCreateOpen(false);
     } catch (e) {
@@ -137,11 +150,17 @@ export function MovimentacoesPageClient() {
 
   const tipoEdit = useWatch({ control: controlEdit, name: "tipo" });
   const contaIdEdit = useWatch({ control: controlEdit, name: "conta_id" });
+  const origemEdit = useWatch({ control: controlEdit, name: "origem" });
   const calcAutoEdit = useWatch({ control: controlEdit, name: "calcular_expiracao_auto" });
   const dataMovEdit = useWatch({ control: controlEdit, name: "data" });
 
   const contaSelEdit = contas?.find((c) => c.id === contaIdEdit);
-  const validadeEdit = contaSelEdit?.programa?.validade_meses ?? 24;
+  const regrasContaEdit = useMemo(
+    () => (regrasValidade ?? []).filter((r) => r.programa_id === contaSelEdit?.programa_id),
+    [regrasValidade, contaSelEdit?.programa_id]
+  );
+  const validadePadraoEdit = contaSelEdit?.programa?.validade_meses ?? 24;
+  const validadeEdit = resolverValidadeMeses(regrasContaEdit, origemEdit, validadePadraoEdit);
   const expCalcEdit =
     tipoEdit === "credito" && calcAutoEdit && dataMovEdit
       ? calcularDataExpiracao(dataMovEdit, validadeEdit).toISOString().slice(0, 10)
@@ -158,6 +177,7 @@ export function MovimentacoesPageClient() {
       quantidade: absQtd,
       data: mov.data,
       data_expiracao: mov.data_expiracao ?? "",
+      origem: mov.origem ?? "cartao",
       descricao: mov.descricao ?? "",
       calcular_expiracao_auto: false,
     });
@@ -183,6 +203,7 @@ export function MovimentacoesPageClient() {
         quantidade: qtd,
         data: values.data,
         data_expiracao: exp,
+        origem: values.tipo === "credito" ? values.origem ?? "cartao" : null,
         descricao: values.descricao || null,
       });
       toast.success("Movimentação atualizada");
@@ -253,9 +274,22 @@ export function MovimentacoesPageClient() {
                 </div>
                 {tipo === "credito" && (
                   <>
+                    <div className="space-y-1.5">
+                      <Label>Origem dos pontos/milhas</Label>
+                      <Select {...register("origem", { required: true })}>
+                        {ORIGENS_CREDITO.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {ORIGENS_CREDITO.find((o) => o.value === origem)?.descricao}
+                      </p>
+                    </div>
                     <label className="flex items-center gap-2 text-sm">
                       <input type="checkbox" {...register("calcular_expiracao_auto")} />
-                      Calcular expiração automaticamente ({validade} meses)
+                      Calcular expiração automaticamente ({validade} meses para esta origem)
                     </label>
                     {!calcAuto && (
                       <div className="space-y-1.5">
@@ -332,9 +366,19 @@ export function MovimentacoesPageClient() {
             </div>
             {tipoEdit === "credito" && (
               <>
+                <div className="space-y-1.5">
+                  <Label>Origem dos pontos/milhas</Label>
+                  <Select {...regEdit("origem", { required: true })}>
+                    {ORIGENS_CREDITO.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" {...regEdit("calcular_expiracao_auto")} />
-                  Calcular expiração automaticamente ({validadeEdit} meses)
+                  Calcular expiração automaticamente ({validadeEdit} meses para esta origem)
                 </label>
                 {!calcAutoEdit && (
                   <div className="space-y-1.5">
@@ -383,6 +427,7 @@ export function MovimentacoesPageClient() {
                 <TableHead>Tipo</TableHead>
                 <TableHead className="text-right">Quantidade</TableHead>
                 <TableHead>Expira</TableHead>
+                <TableHead>Origem</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead className="w-24"></TableHead>
               </TableRow>
@@ -411,6 +456,9 @@ export function MovimentacoesPageClient() {
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {m.data_expiracao ? formatDate(m.data_expiracao) : "—"}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {labelOrigem(m.origem)}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground max-w-[20ch] truncate">
                       {m.descricao ?? "—"}

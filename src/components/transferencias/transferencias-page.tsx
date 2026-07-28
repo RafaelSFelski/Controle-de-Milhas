@@ -35,7 +35,9 @@ import {
 } from "@/lib/queries/transferencias";
 import { useContasComSaldo } from "@/lib/queries/contas";
 import { useProgramas } from "@/lib/queries/programas";
+import { useRegrasValidade } from "@/lib/queries/regras-validade";
 import { calcularTransferencia } from "@/lib/calculations";
+import { resolverValidadeMeses } from "@/lib/validade";
 import { formatBRL, formatDate, formatNumber } from "@/lib/utils";
 
 // Programas que permitem compra de pontos para transferência
@@ -60,6 +62,7 @@ export function TransferenciasPageClient() {
   const { data: transferencias, isLoading } = useTransferencias();
   const { data: contas } = useContasComSaldo();
   const { data: programas } = useProgramas();
+  const { data: regrasValidade } = useRegrasValidade();
   const createMut = useCreateTransferencia();
   const deleteMut = useDeleteTransferencia();
   const [open, setOpen] = useState(false);
@@ -96,6 +99,12 @@ export function TransferenciasPageClient() {
       programaOrigem.nome.toLowerCase().includes(p)
     );
   }, [programaOrigem]);
+
+  const validadeMesesDestino = useMemo(() => {
+    if (!programaDestino) return 24;
+    const regras = (regrasValidade ?? []).filter((r) => r.programa_id === programaDestino.id);
+    return resolverValidadeMeses(regras, "transferencia", programaDestino.validade_meses);
+  }, [programaDestino, regrasValidade]);
 
   // Custo da compra de pontos
   const custoPontosComprados = useMemo(() => {
@@ -152,7 +161,7 @@ export function TransferenciasPageClient() {
         custo_reais: custoTotal,
         data: values.data,
         observacao: obs,
-        validade_meses_destino: programaDestino?.validade_meses,
+        validade_meses_destino: validadeMesesDestino,
         pontos_comprados: pontosComprados > 0 ? pontosComprados : null,
       });
       toast.success(`Transferência registrada: ${formatNumber(dest)} milhas creditadas`);
@@ -329,8 +338,8 @@ export function TransferenciasPageClient() {
                   </div>
                   {programaDestino && (
                     <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Validade no destino:</span>
-                      <span>{programaDestino.validade_meses} meses</span>
+                      <span>Validade no destino (transferência):</span>
+                      <span>{validadeMesesDestino} meses</span>
                     </div>
                   )}
                   {custoTotal > 0 && (

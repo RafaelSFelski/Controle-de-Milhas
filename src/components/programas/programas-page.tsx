@@ -53,6 +53,8 @@ import {
   useProgramas,
   useUpdatePrograma,
 } from "@/lib/queries/programas";
+import { useRegrasValidade } from "@/lib/queries/regras-validade";
+import { RegrasValidadeEditor } from "@/components/programas/regras-validade-editor";
 import { formatBRL, formatNumber } from "@/lib/utils";
 import type {
   CategoriaPrograma,
@@ -74,6 +76,7 @@ interface ProgramaStats {
   contas: number;
   saldoTotal: number;
   cotacaoMilheiro: number | null;
+  regrasValidade: number;
 }
 
 const CATEGORIAS: {
@@ -156,7 +159,7 @@ function ProgramaFormFields({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label htmlFor={`${idPrefix}-validade`}>Validade (meses)</Label>
+          <Label htmlFor={`${idPrefix}-validade`}>Validade padrão (meses)</Label>
           <Input
             id={`${idPrefix}-validade`}
             type="number"
@@ -246,8 +249,13 @@ function ProgramaCard({
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Validade</p>
+            <p className="text-xs text-muted-foreground">Validade padrão</p>
             <p className="font-medium">{programa.validade_meses} meses</p>
+            {stats.regrasValidade > 0 && (
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                +{stats.regrasValidade} regra(s) por origem
+              </p>
+            )}
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Cotação</p>
@@ -295,6 +303,7 @@ function ProgramaCard({
 
 export function ProgramasPageClient() {
   const { data, isLoading } = useProgramas();
+  const { data: regrasValidade } = useRegrasValidade();
   const { data: contas } = useContasComSaldo();
   const { data: cotacoes } = useCotacoesAtuais();
   const createMut = useCreatePrograma();
@@ -318,6 +327,7 @@ export function ProgramasPageClient() {
         contas: 0,
         saldoTotal: 0,
         cotacaoMilheiro: null,
+        regrasValidade: 0,
       };
       cur.contas += 1;
       cur.saldoTotal += c.saldo_atual ?? 0;
@@ -328,12 +338,23 @@ export function ProgramasPageClient() {
         contas: 0,
         saldoTotal: 0,
         cotacaoMilheiro: null,
+        regrasValidade: 0,
       };
       cur.cotacaoMilheiro = Number(cot.valor_milheiro);
       map.set(cot.programa_id, cur);
     }
+    for (const regra of regrasValidade ?? []) {
+      const cur = map.get(regra.programa_id) ?? {
+        contas: 0,
+        saldoTotal: 0,
+        cotacaoMilheiro: null,
+        regrasValidade: 0,
+      };
+      cur.regrasValidade += 1;
+      map.set(regra.programa_id, cur);
+    }
     return map;
-  }, [contas, cotacoes]);
+  }, [contas, cotacoes, regrasValidade]);
 
   const resumo = useMemo(() => {
     const programas = data ?? [];
@@ -483,12 +504,18 @@ export function ProgramasPageClient() {
           if (!open) setEditingPrograma(null);
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar programa</DialogTitle>
           </DialogHeader>
           <form onSubmit={editForm.handleSubmit(onSubmitEdit)} className="space-y-4">
             <ProgramaFormFields form={editForm} idPrefix="edit" />
+            {editingPrograma && (
+              <RegrasValidadeEditor
+                programaId={editingPrograma.id}
+                validadePadrao={editingPrograma.validade_meses}
+              />
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditingPrograma(null)}>
                 Cancelar
@@ -618,6 +645,7 @@ export function ProgramasPageClient() {
                         contas: 0,
                         saldoTotal: 0,
                         cotacaoMilheiro: null,
+                        regrasValidade: 0,
                       }
                     }
                     onEdit={onOpenEdit}
@@ -638,7 +666,7 @@ export function ProgramasPageClient() {
                 <TableHead>Unidade</TableHead>
                 <TableHead className="text-right">Saldo</TableHead>
                 <TableHead className="text-right">Contas</TableHead>
-                <TableHead className="text-right">Validade</TableHead>
+                <TableHead className="text-right">Validade padrão</TableHead>
                 <TableHead className="w-24"></TableHead>
               </TableRow>
             </TableHeader>
@@ -648,6 +676,7 @@ export function ProgramasPageClient() {
                   contas: 0,
                   saldoTotal: 0,
                   cotacaoMilheiro: null,
+                  regrasValidade: 0,
                 };
                 const meta = categoriaMeta(p.categoria);
                 return (
