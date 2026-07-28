@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { Activity, Pencil, Plus, Trash2 } from "lucide-react";
-import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { ConfigWarning } from "@/components/shared/config-warning";
 import { EmptyState } from "@/components/shared/empty-state";
+import { FieldError } from "@/components/shared/field-error";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -43,19 +45,9 @@ import {
 import { calcularDataExpiracao } from "@/lib/calculations";
 import { useRegrasValidade } from "@/lib/queries/regras-validade";
 import { ORIGENS_CREDITO, labelOrigem, resolverValidadeMeses } from "@/lib/validade";
+import { movimentacaoSchema, type MovimentacaoFormValues } from "@/lib/schemas";
 import { formatDate, formatNumber } from "@/lib/utils";
-import type { OrigemCredito, TipoMovimentacao } from "@/types/database";
-
-interface FormValues {
-  conta_id: string;
-  tipo: "credito" | "debito" | "ajuste" | "expiracao";
-  quantidade: number;
-  data: string;
-  data_expiracao?: string;
-  origem?: OrigemCredito;
-  descricao?: string;
-  calcular_expiracao_auto?: boolean;
-}
+import type { TipoMovimentacao } from "@/types/database";
 
 const TIPOS: Record<TipoMovimentacao, { label: string; variant: "default" | "secondary" | "warning" | "outline" }> = {
   credito: { label: "Crédito", variant: "default" },
@@ -78,7 +70,8 @@ export function MovimentacoesPageClient() {
   const [editingMov, setEditingMov] = useState<Movimentacao | null>(null);
 
   // --- formulário de criação ---
-  const { register, handleSubmit, control, reset, formState } = useForm<FormValues>({
+  const { register, handleSubmit, control, reset, formState } = useForm<MovimentacaoFormValues>({
+    resolver: zodResolver(movimentacaoSchema) as Resolver<MovimentacaoFormValues>,
     defaultValues: {
       tipo: "credito",
       data: new Date().toISOString().slice(0, 10),
@@ -105,7 +98,7 @@ export function MovimentacoesPageClient() {
       ? calcularDataExpiracao(dataMov, validade).toISOString().slice(0, 10)
       : undefined;
 
-  const onSubmitCreate = async (values: FormValues) => {
+  const onSubmitCreate = async (values: MovimentacaoFormValues) => {
     const isDeb = values.tipo === "debito" || values.tipo === "expiracao";
     const qtd = isDeb ? -Math.abs(Number(values.quantidade)) : Math.abs(Number(values.quantidade));
     let exp: string | null = null;
@@ -146,7 +139,9 @@ export function MovimentacoesPageClient() {
     control: controlEdit,
     reset: resetEdit,
     formState: formStateEdit,
-  } = useForm<FormValues>();
+  } = useForm<MovimentacaoFormValues>({
+    resolver: zodResolver(movimentacaoSchema) as Resolver<MovimentacaoFormValues>,
+  });
 
   const tipoEdit = useWatch({ control: controlEdit, name: "tipo" });
   const contaIdEdit = useWatch({ control: controlEdit, name: "conta_id" });
@@ -173,7 +168,7 @@ export function MovimentacoesPageClient() {
       conta_id: mov.conta_id,
       tipo: (["credito", "debito", "ajuste", "expiracao"].includes(mov.tipo)
         ? mov.tipo
-        : "ajuste") as FormValues["tipo"],
+        : "ajuste") as MovimentacaoFormValues["tipo"],
       quantidade: absQtd,
       data: mov.data,
       data_expiracao: mov.data_expiracao ?? "",
@@ -183,7 +178,7 @@ export function MovimentacoesPageClient() {
     });
   };
 
-  const onSubmitEdit = async (values: FormValues) => {
+  const onSubmitEdit = async (values: MovimentacaoFormValues) => {
     if (!editingMov) return;
     const isDeb = values.tipo === "debito" || values.tipo === "expiracao";
     const qtd = isDeb ? -Math.abs(Number(values.quantidade)) : Math.abs(Number(values.quantidade));
@@ -239,7 +234,7 @@ export function MovimentacoesPageClient() {
               <form onSubmit={handleSubmit(onSubmitCreate)} className="space-y-4">
                 <div className="space-y-1.5">
                   <Label>Conta *</Label>
-                  <Select {...register("conta_id", { required: true })}>
+                  <Select {...register("conta_id")}>
                     <option value="">Selecione...</option>
                     {contas?.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -247,11 +242,12 @@ export function MovimentacoesPageClient() {
                       </option>
                     ))}
                   </Select>
+                  <FieldError error={formState.errors.conta_id} />
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1.5">
                     <Label>Tipo *</Label>
-                    <Select {...register("tipo", { required: true })}>
+                    <Select {...register("tipo")}>
                       <option value="credito">Crédito</option>
                       <option value="debito">Débito</option>
                       <option value="ajuste">Ajuste</option>
@@ -264,19 +260,21 @@ export function MovimentacoesPageClient() {
                       type="number"
                       step="any"
                       min={0}
-                      {...register("quantidade", { required: true, valueAsNumber: true })}
+                      {...register("quantidade", { valueAsNumber: true })}
                     />
+                    <FieldError error={formState.errors.quantidade} />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Data *</Label>
-                    <Input type="date" {...register("data", { required: true })} />
+                    <Input type="date" {...register("data")} />
+                    <FieldError error={formState.errors.data} />
                   </div>
                 </div>
                 {tipo === "credito" && (
                   <>
                     <div className="space-y-1.5">
                       <Label>Origem dos pontos/milhas</Label>
-                      <Select {...register("origem", { required: true })}>
+                      <Select {...register("origem")}>
                         {ORIGENS_CREDITO.map((o) => (
                           <option key={o.value} value={o.value}>
                             {o.label}
@@ -331,7 +329,7 @@ export function MovimentacoesPageClient() {
           <form onSubmit={handleEdit(onSubmitEdit)} className="space-y-4">
             <div className="space-y-1.5">
               <Label>Conta *</Label>
-              <Select {...regEdit("conta_id", { required: true })}>
+              <Select {...regEdit("conta_id")}>
                 <option value="">Selecione...</option>
                 {contas?.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -339,11 +337,12 @@ export function MovimentacoesPageClient() {
                   </option>
                 ))}
               </Select>
+              <FieldError error={formStateEdit.errors.conta_id} />
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label>Tipo *</Label>
-                <Select {...regEdit("tipo", { required: true })}>
+                <Select {...regEdit("tipo")}>
                   <option value="credito">Crédito</option>
                   <option value="debito">Débito</option>
                   <option value="ajuste">Ajuste</option>
@@ -356,19 +355,21 @@ export function MovimentacoesPageClient() {
                   type="number"
                   step="any"
                   min={0}
-                  {...regEdit("quantidade", { required: true, valueAsNumber: true })}
+                  {...regEdit("quantidade", { valueAsNumber: true })}
                 />
+                <FieldError error={formStateEdit.errors.quantidade} />
               </div>
               <div className="space-y-1.5">
                 <Label>Data *</Label>
-                <Input type="date" {...regEdit("data", { required: true })} />
+                <Input type="date" {...regEdit("data")} />
+                <FieldError error={formStateEdit.errors.data} />
               </div>
             </div>
             {tipoEdit === "credito" && (
               <>
                 <div className="space-y-1.5">
                   <Label>Origem dos pontos/milhas</Label>
-                  <Select {...regEdit("origem", { required: true })}>
+                  <Select {...regEdit("origem")}>
                     {ORIGENS_CREDITO.map((o) => (
                       <option key={o.value} value={o.value}>
                         {o.label}
@@ -453,6 +454,13 @@ export function MovimentacoesPageClient() {
                     >
                       {isPositive ? "+" : ""}
                       {formatNumber(Number(m.quantidade))}
+                      {isPositive &&
+                        m.quantidade_restante != null &&
+                        Number(m.quantidade_restante) !== Number(m.quantidade) && (
+                          <div className="text-[10px] font-normal text-muted-foreground">
+                            rest. {formatNumber(Number(m.quantidade_restante))}
+                          </div>
+                        )}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {m.data_expiracao ? formatDate(m.data_expiracao) : "—"}

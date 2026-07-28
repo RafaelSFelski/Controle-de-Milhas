@@ -287,8 +287,8 @@ Implementados em `src/lib/calculations.ts`:
 | Dashboard, gráficos, cotações, metas | Concluído |
 | Alertas de expiração e relatórios (CSV) | Concluído |
 | Tema claro/escuro, toasts, estados empty/loading | Concluído |
-| Importação de extratos | Parcial (página existe) |
-| FIFO automático para débitos | Pendente |
+| Importação de extratos | Concluído |
+| FIFO automático para débitos | Concluído |
 | Auth multi-usuário | Pendente |
 | Cron automático de créditos de assinatura | Pendente |
 | Notificações push de expiração | Pendente |
@@ -296,10 +296,8 @@ Implementados em `src/lib/calculations.ts`:
 ## Roadmap (Próximos Passos)
 
 1. Edge Function no Supabase para gerar créditos automaticamente todo dia 1
-2. Importação CSV completa de extratos de programas
-3. Login com Supabase Auth para uso multi-usuário
-4. Cálculo FIFO automático para débitos consumirem créditos mais antigos
-5. Notificações push para milhas próximas de expirar
+2. Login com Supabase Auth para uso multi-usuário
+3. Notificações push para milhas próximas de expirar
 
 ## Entregáveis do Produto
 

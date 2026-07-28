@@ -15,14 +15,15 @@ import { DistribuicaoChart } from "./distribuicao-chart";
 import { EvolucaoChart } from "./evolucao-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useContasComSaldo } from "@/lib/queries/contas";
-import { useMovimentacoes, useExpiracoes } from "@/lib/queries/movimentacoes";
+import {
+  useMovimentacoes,
+  useExpiracoes,
+  useMilhasExpirando,
+} from "@/lib/queries/movimentacoes";
 import { useTransferencias } from "@/lib/queries/transferencias";
 import { useCotacoesAtuais } from "@/lib/queries/cotacoes";
 import { useAssinaturas } from "@/lib/queries/assinaturas";
-import {
-  milhasExpirandoEmDias,
-  valorEstimadoCarteira,
-} from "@/lib/calculations";
+import { valorEstimadoCarteira } from "@/lib/calculations";
 import { formatBRL, formatDate, formatNumber } from "@/lib/utils";
 import { addMonths, format, parseISO, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -30,7 +31,8 @@ import { ptBR } from "date-fns/locale";
 export function DashboardClient() {
   const { data: contas } = useContasComSaldo();
   const { data: movs } = useMovimentacoes();
-  const { data: expiracoes } = useExpiracoes();
+  const { data: expiracoes } = useExpiracoes(5);
+  const { data: expirandoProx90 = 0 } = useMilhasExpirando(90);
   const { data: transferencias } = useTransferencias();
   const { data: cotacoes } = useCotacoesAtuais();
   const { data: assinaturas } = useAssinaturas();
@@ -48,14 +50,6 @@ export function DashboardClient() {
       cotMap
     );
   }, [contas, cotacoes]);
-
-  const expirandoProx90 = milhasExpirandoEmDias(
-    (expiracoes ?? []).map((e) => ({
-      quantidade: e.quantidade,
-      data_expiracao: e.data_expiracao,
-    })),
-    90
-  );
 
   const transfMes = useMemo(() => {
     if (!transferencias) return 0;
@@ -99,7 +93,7 @@ export function DashboardClient() {
     return result;
   }, [movs]);
 
-  const proximasExpiracoes = (expiracoes ?? []).slice(0, 5);
+  const proximasExpiracoes = expiracoes ?? [];
 
   const proximasCobrancas = useMemo(() => {
     if (!assinaturas) return [];
@@ -181,7 +175,9 @@ export function DashboardClient() {
                         </p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="font-mono">{formatNumber(e.quantidade)}</p>
+                        <p className="font-mono">
+                          {formatNumber(Number(e.quantidade_restante ?? e.quantidade))}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {e.data_expiracao ? formatDate(e.data_expiracao) : "—"}
                         </p>

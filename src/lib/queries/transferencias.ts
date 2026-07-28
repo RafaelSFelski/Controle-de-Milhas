@@ -135,6 +135,8 @@ export function useCreateTransferencia() {
       qc.invalidateQueries({ queryKey: queryKeys.transferencias });
       qc.invalidateQueries({ queryKey: queryKeys.movimentacoes() });
       qc.invalidateQueries({ queryKey: queryKeys.contasComJoin });
+      qc.invalidateQueries({ queryKey: queryKeys.expiracoes });
+      qc.invalidateQueries({ queryKey: ["milhas-expirando"] });
     },
   });
 }
@@ -153,6 +155,8 @@ export function useDeleteTransferencia() {
       qc.invalidateQueries({ queryKey: queryKeys.transferencias });
       qc.invalidateQueries({ queryKey: queryKeys.movimentacoes() });
       qc.invalidateQueries({ queryKey: queryKeys.contasComJoin });
+      qc.invalidateQueries({ queryKey: queryKeys.expiracoes });
+      qc.invalidateQueries({ queryKey: ["milhas-expirando"] });
     },
   });
 }

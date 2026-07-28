@@ -75,6 +75,8 @@ export interface Movimentacao {
   conta_id: string;
   tipo: TipoMovimentacao;
   quantidade: number;
+  /** Saldo ainda disponível no crédito após consumo FIFO; null em débitos. */
+  quantidade_restante: number | null;
   data: string;
   data_expiracao: string | null;
   origem: OrigemCredito | null;

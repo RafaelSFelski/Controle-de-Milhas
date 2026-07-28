@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { Plus, TrendingUp, Trash2 } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, type Resolver } from "react-hook-form";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { ConfigWarning } from "@/components/shared/config-warning";
 import { EmptyState } from "@/components/shared/empty-state";
+import { FieldError } from "@/components/shared/field-error";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -34,15 +36,9 @@ import {
   useCotacoesAtuais,
 } from "@/lib/queries/cotacoes";
 import { useProgramas } from "@/lib/queries/programas";
+import { cotacaoSchema, type CotacaoFormValues } from "@/lib/schemas";
 import { formatBRL, formatDate } from "@/lib/utils";
 import { CustoMedioCard } from "./custo-medio-card";
-
-interface FormValues {
-  programa_id: string;
-  valor_milheiro: number;
-  data: string;
-  fonte?: string;
-}
 
 export function CotacoesPageClient() {
   const { data: cotacoes, isLoading } = useCotacoes();
@@ -51,7 +47,8 @@ export function CotacoesPageClient() {
   const createMut = useCreateCotacao();
   const deleteMut = useDeleteCotacao();
   const [open, setOpen] = useState(false);
-  const { register, handleSubmit, reset, formState } = useForm<FormValues>({
+  const { register, handleSubmit, reset, formState } = useForm<CotacaoFormValues>({
+    resolver: zodResolver(cotacaoSchema) as Resolver<CotacaoFormValues>,
     defaultValues: { data: new Date().toISOString().slice(0, 10) },
   });
 
@@ -61,7 +58,7 @@ export function CotacoesPageClient() {
     return m;
   }, [atuais]);
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = async (values: CotacaoFormValues) => {
     try {
       await createMut.mutateAsync({
         programa_id: values.programa_id,
@@ -97,7 +94,7 @@ export function CotacoesPageClient() {
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="space-y-1.5">
                   <Label>Programa *</Label>
-                  <Select {...register("programa_id", { required: true })}>
+                  <Select {...register("programa_id")}>
                     <option value="">Selecione...</option>
                     {programas?.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -105,6 +102,7 @@ export function CotacoesPageClient() {
                       </option>
                     ))}
                   </Select>
+                  <FieldError error={formState.errors.programa_id} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -112,12 +110,14 @@ export function CotacoesPageClient() {
                     <Input
                       type="number"
                       step="0.01"
-                      {...register("valor_milheiro", { required: true, valueAsNumber: true })}
+                      {...register("valor_milheiro", { valueAsNumber: true })}
                     />
+                    <FieldError error={formState.errors.valor_milheiro} />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Data *</Label>
-                    <Input type="date" {...register("data", { required: true })} />
+                    <Input type="date" {...register("data")} />
+                    <FieldError error={formState.errors.data} />
                   </div>
                 </div>
                 <div className="space-y-1.5">

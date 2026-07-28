@@ -127,6 +127,8 @@ export function useCreateAssinatura() {
       qc.invalidateQueries({ queryKey: queryKeys.assinaturas });
       qc.invalidateQueries({ queryKey: queryKeys.movimentacoes() });
       qc.invalidateQueries({ queryKey: queryKeys.contasComJoin });
+      qc.invalidateQueries({ queryKey: queryKeys.expiracoes });
+      qc.invalidateQueries({ queryKey: ["milhas-expirando"] });
     },
   });
 }
@@ -146,6 +148,8 @@ export function useAplicarBonusAdesao() {
       qc.invalidateQueries({ queryKey: queryKeys.assinaturas });
       qc.invalidateQueries({ queryKey: queryKeys.movimentacoes() });
       qc.invalidateQueries({ queryKey: queryKeys.contasComJoin });
+      qc.invalidateQueries({ queryKey: queryKeys.expiracoes });
+      qc.invalidateQueries({ queryKey: ["milhas-expirando"] });
     },
   });
 }
@@ -200,6 +204,8 @@ export function useUpdateAssinatura() {
       qc.invalidateQueries({ queryKey: queryKeys.assinaturas });
       qc.invalidateQueries({ queryKey: queryKeys.movimentacoes() });
       qc.invalidateQueries({ queryKey: queryKeys.contasComJoin });
+      qc.invalidateQueries({ queryKey: queryKeys.expiracoes });
+      qc.invalidateQueries({ queryKey: ["milhas-expirando"] });
     },
   });
 }
@@ -270,6 +276,8 @@ export function useUpgradeAssinatura() {
       qc.invalidateQueries({ queryKey: queryKeys.assinaturas });
       qc.invalidateQueries({ queryKey: queryKeys.movimentacoes() });
       qc.invalidateQueries({ queryKey: queryKeys.contasComJoin });
+      qc.invalidateQueries({ queryKey: queryKeys.expiracoes });
+      qc.invalidateQueries({ queryKey: ["milhas-expirando"] });
     },
   });
 }
@@ -288,6 +296,8 @@ export function useDeleteAssinatura() {
       qc.invalidateQueries({ queryKey: queryKeys.assinaturas });
       qc.invalidateQueries({ queryKey: queryKeys.movimentacoes() });
       qc.invalidateQueries({ queryKey: queryKeys.contasComJoin });
+      qc.invalidateQueries({ queryKey: queryKeys.expiracoes });
+      qc.invalidateQueries({ queryKey: ["milhas-expirando"] });
     },
   });
 }
@@ -307,6 +317,8 @@ export function useGerarCreditosMes() {
       qc.invalidateQueries({ queryKey: queryKeys.movimentacoes() });
       qc.invalidateQueries({ queryKey: queryKeys.contasComJoin });
       qc.invalidateQueries({ queryKey: queryKeys.assinaturas });
+      qc.invalidateQueries({ queryKey: queryKeys.expiracoes });
+      qc.invalidateQueries({ queryKey: ["milhas-expirando"] });
     },
   });
 }

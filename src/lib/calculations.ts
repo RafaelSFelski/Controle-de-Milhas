@@ -50,9 +50,14 @@ export function cotacoesAtuaisPorPrograma(
 
 /**
  * Soma das milhas que expiram dentro de uma janela (em dias) a partir de hoje.
+ * Prefira `quantidade_restante` (pós-FIFO) quando disponível; cai em `quantidade`.
  */
 export function milhasExpirandoEmDias(
-  movimentacoes: Array<{ quantidade: number; data_expiracao: string | null }>,
+  movimentacoes: Array<{
+    quantidade: number;
+    quantidade_restante?: number | null;
+    data_expiracao: string | null;
+  }>,
   dias: number
 ): number {
   const hoje = new Date();
@@ -60,9 +65,13 @@ export function milhasExpirandoEmDias(
   limite.setDate(hoje.getDate() + dias);
 
   return movimentacoes.reduce((acc, m) => {
-    if (!m.data_expiracao || Number(m.quantidade) <= 0) return acc;
+    const restante =
+      m.quantidade_restante != null
+        ? Number(m.quantidade_restante)
+        : Number(m.quantidade);
+    if (!m.data_expiracao || restante <= 0) return acc;
     const exp = parseISO(m.data_expiracao);
-    if (exp >= hoje && exp <= limite) return acc + Number(m.quantidade);
+    if (exp >= hoje && exp <= limite) return acc + restante;
     return acc;
   }, 0);
 }

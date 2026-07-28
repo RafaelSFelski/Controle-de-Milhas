@@ -17,11 +17,13 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, type Resolver, type UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { ConfigWarning } from "@/components/shared/config-warning";
 import { EmptyState } from "@/components/shared/empty-state";
+import { FieldError } from "@/components/shared/field-error";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +57,7 @@ import {
 } from "@/lib/queries/programas";
 import { useRegrasValidade } from "@/lib/queries/regras-validade";
 import { RegrasValidadeEditor } from "@/components/programas/regras-validade-editor";
+import { programaSchema, type ProgramaFormValues } from "@/lib/schemas";
 import { formatBRL, formatNumber } from "@/lib/utils";
 import type {
   CategoriaPrograma,
@@ -63,14 +66,6 @@ import type {
 } from "@/types/database";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
-
-interface FormValues {
-  nome: string;
-  categoria: CategoriaPrograma;
-  cor?: string;
-  validade_meses?: number;
-  unidade: UnidadePrograma;
-}
 
 interface ProgramaStats {
   contas: number;
@@ -97,7 +92,7 @@ const UNIDADES: { value: UnidadePrograma; label: string }[] = [
   { value: "pontos", label: "Pontos" },
 ];
 
-const DEFAULT_FORM: FormValues = {
+const DEFAULT_FORM: ProgramaFormValues = {
   categoria: "aerea",
   cor: "#0ea5e9",
   validade_meses: 24,
@@ -120,7 +115,7 @@ function ProgramaFormFields({
   form,
   idPrefix,
 }: {
-  form: ReturnType<typeof useForm<FormValues>>;
+  form: UseFormReturn<ProgramaFormValues>;
   idPrefix: string;
 }) {
   const categoria = form.watch("categoria");
@@ -131,9 +126,10 @@ function ProgramaFormFields({
         <Label htmlFor={`${idPrefix}-nome`}>Nome *</Label>
         <Input
           id={`${idPrefix}-nome`}
-          {...form.register("nome", { required: true })}
+          {...form.register("nome")}
           placeholder="Ex.: Smiles, Livelo..."
         />
+        <FieldError error={form.formState.errors.nome} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
@@ -166,6 +162,7 @@ function ProgramaFormFields({
             min={1}
             {...form.register("validade_meses", { valueAsNumber: true })}
           />
+          <FieldError error={form.formState.errors.validade_meses} />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor={`${idPrefix}-cor`}>Cor</Label>
@@ -316,8 +313,13 @@ export function ProgramasPageClient() {
   const [categoriaFiltro, setCategoriaFiltro] = useState<CategoriaPrograma | "todas">("todas");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
-  const createForm = useForm<FormValues>({ defaultValues: DEFAULT_FORM });
-  const editForm = useForm<FormValues>();
+  const createForm = useForm<ProgramaFormValues>({
+    resolver: zodResolver(programaSchema) as Resolver<ProgramaFormValues>,
+    defaultValues: DEFAULT_FORM,
+  });
+  const editForm = useForm<ProgramaFormValues>({
+    resolver: zodResolver(programaSchema) as Resolver<ProgramaFormValues>,
+  });
 
   const statsPorPrograma = useMemo(() => {
     const map = new Map<string, ProgramaStats>();
@@ -394,7 +396,7 @@ export function ProgramasPageClient() {
     }));
   }, [programasFiltrados]);
 
-  const onSubmitCreate = async (values: FormValues) => {
+  const onSubmitCreate = async (values: ProgramaFormValues) => {
     try {
       await createMut.mutateAsync({
         nome: values.nome.trim(),
@@ -422,7 +424,7 @@ export function ProgramasPageClient() {
     });
   };
 
-  const onSubmitEdit = async (values: FormValues) => {
+  const onSubmitEdit = async (values: ProgramaFormValues) => {
     if (!editingPrograma) return;
     try {
       await updateMut.mutateAsync({

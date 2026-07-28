@@ -104,6 +104,8 @@ export function useCreateConta() {
       qc.invalidateQueries({ queryKey: queryKeys.contas });
       qc.invalidateQueries({ queryKey: queryKeys.contasComJoin });
       qc.invalidateQueries({ queryKey: queryKeys.movimentacoes() });
+      qc.invalidateQueries({ queryKey: queryKeys.expiracoes });
+      qc.invalidateQueries({ queryKey: ["milhas-expirando"] });
     },
   });
 }

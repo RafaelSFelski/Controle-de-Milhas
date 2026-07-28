@@ -33,8 +33,9 @@ No SQL Editor do Supabase, execute na ordem:
 5. `supabase/migrations/0005_programas_unidade.sql` — coluna `unidade` (milhas/pontos).
 6. `supabase/migrations/0006_seed_all_accor.sql` — programa All Accor no catálogo.
 7. `supabase/migrations/0007_regras_validade.sql` — validade por origem + RPCs atualizadas.
+8. `supabase/migrations/0008_fifo_quantidade_restante.sql` — consumo FIFO de créditos + RPC de milhas a expirar.
 
-> Se o banco cloud **já tem** as migrations 0001–0004, aplique apenas **0005, 0006 e 0007**.
+> Se o banco cloud **já tem** as migrations 0001–0004, aplique apenas **0005–0008**. Se já tem até 0007, aplique só **0008**.
 
 ### 3. Configure variáveis de ambiente
 

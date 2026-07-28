@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { Pencil, Plus, Trash2, Users } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, type Resolver } from "react-hook-form";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { ConfigWarning } from "@/components/shared/config-warning";
 import { EmptyState } from "@/components/shared/empty-state";
+import { FieldError } from "@/components/shared/field-error";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,7 +28,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatCpf, isCompleteCpf, normalizeCpf } from "@/lib/cpf";
+import { formatCpf, normalizeCpf } from "@/lib/cpf";
+import { titularSchema, type TitularFormValues } from "@/lib/schemas";
 import {
   useCreateTitular,
   useDeleteTitular,
@@ -34,17 +37,6 @@ import {
   useUpdateTitular,
 } from "@/lib/queries/titulares";
 import type { Titular } from "@/types/database";
-
-interface FormValues {
-  nome: string;
-  cpf?: string;
-  email?: string;
-}
-
-const cpfFieldRules = {
-  validate: (value?: string) =>
-    !value?.trim() || isCompleteCpf(value) || "Informe um CPF completo (000.000.000-00)",
-};
 
 export function TitularesPageClient() {
   const { data, isLoading } = useTitulares();
@@ -55,13 +47,17 @@ export function TitularesPageClient() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingTitular, setEditingTitular] = useState<Titular | null>(null);
 
-  const createForm = useForm<FormValues>();
-  const editForm = useForm<FormValues>();
+  const createForm = useForm<TitularFormValues>({
+    resolver: zodResolver(titularSchema) as Resolver<TitularFormValues>,
+  });
+  const editForm = useForm<TitularFormValues>({
+    resolver: zodResolver(titularSchema) as Resolver<TitularFormValues>,
+  });
 
-  const createCpfRegister = createForm.register("cpf", cpfFieldRules);
-  const editCpfRegister = editForm.register("cpf", cpfFieldRules);
+  const createCpfRegister = createForm.register("cpf");
+  const editCpfRegister = editForm.register("cpf");
 
-  const onSubmitCreate = async (values: FormValues) => {
+  const onSubmitCreate = async (values: TitularFormValues) => {
     try {
       await createMut.mutateAsync({
         nome: values.nome.trim(),
@@ -85,7 +81,7 @@ export function TitularesPageClient() {
     });
   };
 
-  const onSubmitEdit = async (values: FormValues) => {
+  const onSubmitEdit = async (values: TitularFormValues) => {
     if (!editingTitular) return;
     try {
       await updateMut.mutateAsync({
@@ -134,9 +130,10 @@ export function TitularesPageClient() {
                   <Label htmlFor="create-nome">Nome *</Label>
                   <Input
                     id="create-nome"
-                    {...createForm.register("nome", { required: true })}
+                    {...createForm.register("nome")}
                     placeholder="João da Silva"
                   />
+                  <FieldError error={createForm.formState.errors.nome} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -152,15 +149,12 @@ export function TitularesPageClient() {
                         void createCpfRegister.onChange(e);
                       }}
                     />
-                    {createForm.formState.errors.cpf && (
-                      <p className="text-sm text-destructive">
-                        {createForm.formState.errors.cpf.message}
-                      </p>
-                    )}
+                    <FieldError error={createForm.formState.errors.cpf} />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="create-email">Email</Label>
                     <Input id="create-email" type="email" {...createForm.register("email")} />
+                    <FieldError error={createForm.formState.errors.email} />
                   </div>
                 </div>
                 <DialogFooter>
@@ -177,7 +171,6 @@ export function TitularesPageClient() {
         }
       />
 
-      {/* Dialog de edição */}
       <Dialog open={!!editingTitular} onOpenChange={(open) => { if (!open) setEditingTitular(null); }}>
         <DialogContent>
           <DialogHeader>
@@ -188,9 +181,10 @@ export function TitularesPageClient() {
               <Label htmlFor="edit-nome">Nome *</Label>
               <Input
                 id="edit-nome"
-                {...editForm.register("nome", { required: true })}
+                {...editForm.register("nome")}
                 placeholder="João da Silva"
               />
+              <FieldError error={editForm.formState.errors.nome} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -206,15 +200,12 @@ export function TitularesPageClient() {
                     void editCpfRegister.onChange(e);
                   }}
                 />
-                {editForm.formState.errors.cpf && (
-                  <p className="text-sm text-destructive">
-                    {editForm.formState.errors.cpf.message}
-                  </p>
-                )}
+                <FieldError error={editForm.formState.errors.cpf} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="edit-email">Email</Label>
                 <Input id="edit-email" type="email" {...editForm.register("email")} />
+                <FieldError error={editForm.formState.errors.email} />
               </div>
             </div>
             <DialogFooter>

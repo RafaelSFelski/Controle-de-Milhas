@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { Gift, Pencil, Plus, Repeat, Trash2, TrendingUp, Zap } from "lucide-react";
-import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { ConfigWarning } from "@/components/shared/config-warning";
 import { EmptyState } from "@/components/shared/empty-state";
+import { FieldError } from "@/components/shared/field-error";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -41,21 +43,16 @@ import {
 import type { AssinaturaJoin } from "@/lib/queries/assinaturas";
 import { useContas } from "@/lib/queries/contas";
 import { custoPorMilheiro, milhasEfetivasMensais } from "@/lib/calculations";
+import {
+  assinaturaEditSchema,
+  assinaturaSchema,
+  assinaturaUpgradeSchema,
+  type AssinaturaEditFormValues,
+  type AssinaturaFormValues,
+  type AssinaturaUpgradeFormValues,
+} from "@/lib/schemas";
 import { formatBRL, formatNumber } from "@/lib/utils";
 import type { StatusAssinatura } from "@/types/database";
-
-interface FormValues {
-  conta_id: string;
-  nome_plano: string;
-  valor_mensal: number;
-  dia_cobranca: number;
-  milhas_mensais: number;
-  data_inicio: string;
-  bonus_percentual: number;
-  bonus_fixo: number;
-  bonus_adesao: number;
-  aplicar_bonus_adesao: boolean;
-}
 
 export function AssinaturasPageClient() {
   const { data, isLoading } = useAssinaturas();
@@ -72,7 +69,8 @@ export function AssinaturasPageClient() {
   const [upgradingAssinatura, setUpgradingAssinatura] = useState<AssinaturaJoin | null>(null);
 
   // --- formulário de criação ---
-  const form = useForm<FormValues>({
+  const form = useForm<AssinaturaFormValues>({
+    resolver: zodResolver(assinaturaSchema) as Resolver<AssinaturaFormValues>,
     defaultValues: {
       dia_cobranca: 1,
       data_inicio: new Date().toISOString().slice(0, 10),
@@ -85,7 +83,9 @@ export function AssinaturasPageClient() {
   const { register, handleSubmit, reset, formState, control } = form;
 
   // --- formulário de upgrade ---
-  const upgradeForm = useForm<FormValues>();
+  const upgradeForm = useForm<AssinaturaUpgradeFormValues>({
+    resolver: zodResolver(assinaturaUpgradeSchema) as Resolver<AssinaturaUpgradeFormValues>,
+  });
   const {
     register: regUpgrade,
     handleSubmit: handleUpgradeSubmit,
@@ -123,7 +123,7 @@ export function AssinaturasPageClient() {
     });
   };
 
-  const onSubmitUpgrade = async (values: FormValues) => {
+  const onSubmitUpgrade = async (values: AssinaturaUpgradeFormValues) => {
     if (!upgradingAssinatura) return;
     try {
       await upgradeMut.mutateAsync({
@@ -147,7 +147,9 @@ export function AssinaturasPageClient() {
   };
 
   // --- formulário de edição ---
-  const editForm = useForm<FormValues>();
+  const editForm = useForm<AssinaturaEditFormValues>({
+    resolver: zodResolver(assinaturaEditSchema) as Resolver<AssinaturaEditFormValues>,
+  });
   const {
     register: regEdit,
     handleSubmit: handleEditSubmit,
@@ -168,7 +170,7 @@ export function AssinaturasPageClient() {
     Number(watched.bonus_fixo) || 0
   );
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = async (values: AssinaturaFormValues) => {
     try {
       await createMut.mutateAsync({
         conta_id: values.conta_id,
@@ -200,7 +202,6 @@ export function AssinaturasPageClient() {
   const onOpenEdit = (a: AssinaturaJoin) => {
     setEditingAssinatura(a);
     resetEdit({
-      conta_id: a.conta_id,
       nome_plano: a.nome_plano,
       valor_mensal: Number(a.valor_mensal),
       dia_cobranca: Number(a.dia_cobranca),
@@ -212,7 +213,7 @@ export function AssinaturasPageClient() {
     });
   };
 
-  const onSubmitEdit = async (values: FormValues) => {
+  const onSubmitEdit = async (values: AssinaturaEditFormValues) => {
     if (!editingAssinatura) return;
     try {
       await updateMut.mutateAsync({
@@ -277,7 +278,7 @@ export function AssinaturasPageClient() {
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                   <div className="space-y-1.5">
                     <Label>Conta *</Label>
-                    <Select {...register("conta_id", { required: true })}>
+                    <Select {...register("conta_id")}>
                       <option value="">Selecione...</option>
                       {contas?.map((c) => (
                         <option key={c.id} value={c.id}>
@@ -285,13 +286,15 @@ export function AssinaturasPageClient() {
                         </option>
                       ))}
                     </Select>
+                    <FieldError error={formState.errors.conta_id} />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Nome do plano *</Label>
                     <Input
                       placeholder="Ex: Smiles Clube 5000"
-                      {...register("nome_plano", { required: true })}
+                      {...register("nome_plano")}
                     />
+                    <FieldError error={formState.errors.nome_plano} />
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-1.5">
@@ -299,16 +302,18 @@ export function AssinaturasPageClient() {
                       <Input
                         type="number"
                         step="0.01"
-                        {...register("valor_mensal", { required: true, valueAsNumber: true })}
+                        {...register("valor_mensal", { valueAsNumber: true })}
                       />
+                      <FieldError error={formState.errors.valor_mensal} />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Milhas/mês *</Label>
                       <Input
                         type="number"
                         step="any"
-                        {...register("milhas_mensais", { required: true, valueAsNumber: true })}
+                        {...register("milhas_mensais", { valueAsNumber: true })}
                       />
+                      <FieldError error={formState.errors.milhas_mensais} />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Dia cobrança *</Label>
@@ -316,8 +321,9 @@ export function AssinaturasPageClient() {
                         type="number"
                         min={1}
                         max={31}
-                        {...register("dia_cobranca", { required: true, valueAsNumber: true })}
+                        {...register("dia_cobranca", { valueAsNumber: true })}
                       />
+                      <FieldError error={formState.errors.dia_cobranca} />
                     </div>
                   </div>
 
@@ -336,6 +342,7 @@ export function AssinaturasPageClient() {
                           placeholder="0"
                           {...register("bonus_percentual", { valueAsNumber: true })}
                         />
+                        <FieldError error={formState.errors.bonus_percentual} />
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs">Bônus fixo/mês</Label>
@@ -346,6 +353,7 @@ export function AssinaturasPageClient() {
                           placeholder="0"
                           {...register("bonus_fixo", { valueAsNumber: true })}
                         />
+                        <FieldError error={formState.errors.bonus_fixo} />
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs">Bônus adesão</Label>
@@ -356,6 +364,7 @@ export function AssinaturasPageClient() {
                           placeholder="0"
                           {...register("bonus_adesao", { valueAsNumber: true })}
                         />
+                        <FieldError error={formState.errors.bonus_adesao} />
                       </div>
                     </div>
                     <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -378,7 +387,8 @@ export function AssinaturasPageClient() {
 
                   <div className="space-y-1.5">
                     <Label>Início *</Label>
-                    <Input type="date" {...register("data_inicio", { required: true })} />
+                    <Input type="date" {...register("data_inicio")} />
+                    <FieldError error={formState.errors.data_inicio} />
                   </div>
                   <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
@@ -422,8 +432,9 @@ export function AssinaturasPageClient() {
               <Label>Nome do novo plano *</Label>
               <Input
                 placeholder="Ex: Smiles Clube 10000"
-                {...regUpgrade("nome_plano", { required: true })}
+                {...regUpgrade("nome_plano")}
               />
+              <FieldError error={formStateUpgrade.errors.nome_plano} />
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
@@ -431,16 +442,18 @@ export function AssinaturasPageClient() {
                 <Input
                   type="number"
                   step="0.01"
-                  {...regUpgrade("valor_mensal", { required: true, valueAsNumber: true })}
+                  {...regUpgrade("valor_mensal", { valueAsNumber: true })}
                 />
+                <FieldError error={formStateUpgrade.errors.valor_mensal} />
               </div>
               <div className="space-y-1.5">
                 <Label>Milhas/mês *</Label>
                 <Input
                   type="number"
                   step="any"
-                  {...regUpgrade("milhas_mensais", { required: true, valueAsNumber: true })}
+                  {...regUpgrade("milhas_mensais", { valueAsNumber: true })}
                 />
+                <FieldError error={formStateUpgrade.errors.milhas_mensais} />
               </div>
               <div className="space-y-1.5">
                 <Label>Dia cobranca *</Label>
@@ -448,8 +461,9 @@ export function AssinaturasPageClient() {
                   type="number"
                   min={1}
                   max={31}
-                  {...regUpgrade("dia_cobranca", { required: true, valueAsNumber: true })}
+                  {...regUpgrade("dia_cobranca", { valueAsNumber: true })}
                 />
+                <FieldError error={formStateUpgrade.errors.dia_cobranca} />
               </div>
             </div>
 
@@ -468,6 +482,7 @@ export function AssinaturasPageClient() {
                     placeholder="0"
                     {...regUpgrade("bonus_percentual", { valueAsNumber: true })}
                   />
+                  <FieldError error={formStateUpgrade.errors.bonus_percentual} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Bonus fixo/mes</Label>
@@ -478,6 +493,7 @@ export function AssinaturasPageClient() {
                     placeholder="0"
                     {...regUpgrade("bonus_fixo", { valueAsNumber: true })}
                   />
+                  <FieldError error={formStateUpgrade.errors.bonus_fixo} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Bonus adesao</Label>
@@ -488,6 +504,7 @@ export function AssinaturasPageClient() {
                     placeholder="0"
                     {...regUpgrade("bonus_adesao", { valueAsNumber: true })}
                   />
+                  <FieldError error={formStateUpgrade.errors.bonus_adesao} />
                 </div>
               </div>
               <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -508,7 +525,8 @@ export function AssinaturasPageClient() {
 
             <div className="space-y-1.5">
               <Label>Inicio do novo plano *</Label>
-              <Input type="date" {...regUpgrade("data_inicio", { required: true })} />
+              <Input type="date" {...regUpgrade("data_inicio")} />
+              <FieldError error={formStateUpgrade.errors.data_inicio} />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setUpgradingAssinatura(null)}>
@@ -532,7 +550,7 @@ export function AssinaturasPageClient() {
           <form onSubmit={handleEditSubmit(onSubmitEdit)} className="space-y-4">
             <div className="space-y-1.5">
               <Label>Conta *</Label>
-              <Select {...regEdit("conta_id", { required: true })} disabled>
+              <Select value={editingAssinatura?.conta_id ?? ""} disabled onChange={() => {}}>
                 {contas?.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.titular?.nome} · {c.programa?.nome}
@@ -544,8 +562,9 @@ export function AssinaturasPageClient() {
               <Label>Nome do plano *</Label>
               <Input
                 placeholder="Ex: Smiles Clube 5000"
-                {...regEdit("nome_plano", { required: true })}
+                {...regEdit("nome_plano")}
               />
+              <FieldError error={formStateEdit.errors.nome_plano} />
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
@@ -553,16 +572,18 @@ export function AssinaturasPageClient() {
                 <Input
                   type="number"
                   step="0.01"
-                  {...regEdit("valor_mensal", { required: true, valueAsNumber: true })}
+                  {...regEdit("valor_mensal", { valueAsNumber: true })}
                 />
+                <FieldError error={formStateEdit.errors.valor_mensal} />
               </div>
               <div className="space-y-1.5">
                 <Label>Milhas/mês *</Label>
                 <Input
                   type="number"
                   step="any"
-                  {...regEdit("milhas_mensais", { required: true, valueAsNumber: true })}
+                  {...regEdit("milhas_mensais", { valueAsNumber: true })}
                 />
+                <FieldError error={formStateEdit.errors.milhas_mensais} />
               </div>
               <div className="space-y-1.5">
                 <Label>Dia cobrança *</Label>
@@ -570,8 +591,9 @@ export function AssinaturasPageClient() {
                   type="number"
                   min={1}
                   max={31}
-                  {...regEdit("dia_cobranca", { required: true, valueAsNumber: true })}
+                  {...regEdit("dia_cobranca", { valueAsNumber: true })}
                 />
+                <FieldError error={formStateEdit.errors.dia_cobranca} />
               </div>
             </div>
 
@@ -590,6 +612,7 @@ export function AssinaturasPageClient() {
                     placeholder="0"
                     {...regEdit("bonus_percentual", { valueAsNumber: true })}
                   />
+                  <FieldError error={formStateEdit.errors.bonus_percentual} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Bônus fixo/mês</Label>
@@ -600,6 +623,7 @@ export function AssinaturasPageClient() {
                     placeholder="0"
                     {...regEdit("bonus_fixo", { valueAsNumber: true })}
                   />
+                  <FieldError error={formStateEdit.errors.bonus_fixo} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Bônus adesão</Label>
@@ -610,13 +634,15 @@ export function AssinaturasPageClient() {
                     placeholder="0"
                     {...regEdit("bonus_adesao", { valueAsNumber: true })}
                   />
+                  <FieldError error={formStateEdit.errors.bonus_adesao} />
                 </div>
               </div>
             </div>
 
             <div className="space-y-1.5">
               <Label>Início *</Label>
-              <Input type="date" {...regEdit("data_inicio", { required: true })} />
+              <Input type="date" {...regEdit("data_inicio")} />
+              <FieldError error={formStateEdit.errors.data_inicio} />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditingAssinatura(null)}>

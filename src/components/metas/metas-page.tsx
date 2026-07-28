@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { Plus, Target, Trash2 } from "lucide-react";
-import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { ConfigWarning } from "@/components/shared/config-warning";
 import { EmptyState } from "@/components/shared/empty-state";
+import { FieldError } from "@/components/shared/field-error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -31,17 +33,9 @@ import { useContasComSaldo } from "@/lib/queries/contas";
 import { useTitulares } from "@/lib/queries/titulares";
 import { useMovimentacoes } from "@/lib/queries/movimentacoes";
 import { projecaoMeta } from "@/lib/calculations";
+import { metaSchema, type MetaFormValues } from "@/lib/schemas";
 import { formatDate, formatNumber } from "@/lib/utils";
 import { addMonths, parseISO, startOfMonth } from "date-fns";
-
-interface FormValues {
-  escopo: "conta" | "titular" | "global";
-  conta_id?: string;
-  titular_id?: string;
-  descricao: string;
-  quantidade_alvo: number;
-  data_alvo: string;
-}
 
 export function MetasPageClient() {
   const { data: metas, isLoading } = useMetas();
@@ -52,7 +46,8 @@ export function MetasPageClient() {
   const updateMut = useUpdateMeta();
   const deleteMut = useDeleteMeta();
   const [open, setOpen] = useState(false);
-  const { register, handleSubmit, control, reset, formState } = useForm<FormValues>({
+  const { register, handleSubmit, control, reset, formState } = useForm<MetaFormValues>({
+    resolver: zodResolver(metaSchema) as Resolver<MetaFormValues>,
     defaultValues: { escopo: "conta" },
   });
   const escopo = useWatch({ control, name: "escopo" });
@@ -72,12 +67,8 @@ export function MetasPageClient() {
     return result;
   }, [movs]);
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = async (values: MetaFormValues) => {
     try {
-      if (!values.data_alvo) {
-        toast.error("Informe a data alvo da meta");
-        return;
-      }
       await createMut.mutateAsync({
         conta_id: values.escopo === "conta" ? values.conta_id ?? null : null,
         titular_id: values.escopo === "titular" ? values.titular_id ?? null : null,
@@ -147,7 +138,7 @@ export function MetasPageClient() {
                 {escopo === "conta" && (
                   <div className="space-y-1.5">
                     <Label>Conta *</Label>
-                    <Select {...register("conta_id", { required: escopo === "conta" })}>
+                    <Select {...register("conta_id")}>
                       <option value="">Selecione...</option>
                       {contas?.map((c) => (
                         <option key={c.id} value={c.id}>
@@ -155,12 +146,13 @@ export function MetasPageClient() {
                         </option>
                       ))}
                     </Select>
+                    <FieldError error={formState.errors.conta_id} />
                   </div>
                 )}
                 {escopo === "titular" && (
                   <div className="space-y-1.5">
                     <Label>Titular *</Label>
-                    <Select {...register("titular_id", { required: escopo === "titular" })}>
+                    <Select {...register("titular_id")}>
                       <option value="">Selecione...</option>
                       {titulares?.map((t) => (
                         <option key={t.id} value={t.id}>
@@ -168,14 +160,16 @@ export function MetasPageClient() {
                         </option>
                       ))}
                     </Select>
+                    <FieldError error={formState.errors.titular_id} />
                   </div>
                 )}
                 <div className="space-y-1.5">
                   <Label>Descrição *</Label>
                   <Input
                     placeholder="Ex: Viagem família 2026"
-                    {...register("descricao", { required: true })}
+                    {...register("descricao")}
                   />
+                  <FieldError error={formState.errors.descricao} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -183,15 +177,17 @@ export function MetasPageClient() {
                     <Input
                       type="number"
                       step="any"
-                      {...register("quantidade_alvo", { required: true, valueAsNumber: true })}
+                      {...register("quantidade_alvo", { valueAsNumber: true })}
                     />
+                    <FieldError error={formState.errors.quantidade_alvo} />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Data alvo *</Label>
                     <Input
                       type="date"
-                      {...register("data_alvo", { required: true })}
+                      {...register("data_alvo")}
                     />
+                    <FieldError error={formState.errors.data_alvo} />
                   </div>
                 </div>
                 <DialogFooter>

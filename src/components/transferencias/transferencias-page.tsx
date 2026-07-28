@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { ArrowLeftRight, Plus, ShoppingCart, Trash2 } from "lucide-react";
-import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { ConfigWarning } from "@/components/shared/config-warning";
 import { EmptyState } from "@/components/shared/empty-state";
+import { FieldError } from "@/components/shared/field-error";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -38,25 +40,11 @@ import { useProgramas } from "@/lib/queries/programas";
 import { useRegrasValidade } from "@/lib/queries/regras-validade";
 import { calcularTransferencia } from "@/lib/calculations";
 import { resolverValidadeMeses } from "@/lib/validade";
+import { transferenciaSchema, type TransferenciaFormValues } from "@/lib/schemas";
 import { formatBRL, formatDate, formatNumber } from "@/lib/utils";
 
 // Programas que permitem compra de pontos para transferência
 const PROGRAMAS_COMPRA_PONTOS = ["esfera", "livelo"];
-
-interface FormValues {
-  conta_origem_id: string;
-  conta_destino_id: string;
-  quantidade_origem: number;
-  taxa_conversao: number;
-  bonus_percentual: number;
-  custo_reais: number;
-  data: string;
-  observacao?: string;
-  // Compra de pontos (Esfera / Livelo)
-  comprar_pontos: boolean;
-  pontos_comprados: number;
-  valor_total_compra: number;
-}
 
 export function TransferenciasPageClient() {
   const { data: transferencias, isLoading } = useTransferencias();
@@ -67,7 +55,8 @@ export function TransferenciasPageClient() {
   const deleteMut = useDeleteTransferencia();
   const [open, setOpen] = useState(false);
 
-  const form = useForm<FormValues>({
+  const form = useForm<TransferenciaFormValues>({
+    resolver: zodResolver(transferenciaSchema) as Resolver<TransferenciaFormValues>,
     defaultValues: {
       taxa_conversao: 1,
       bonus_percentual: 0,
@@ -128,11 +117,7 @@ export function TransferenciasPageClient() {
   // Custo total = custo manual + custo dos pontos comprados
   const custoTotal = (Number(watched.custo_reais) || 0) + custoPontosComprados;
 
-  const onSubmit = async (values: FormValues) => {
-    if (values.conta_origem_id === values.conta_destino_id) {
-      toast.error("Conta de origem e destino não podem ser iguais");
-      return;
-    }
+  const onSubmit = async (values: TransferenciaFormValues) => {
     const pontosComprados = values.comprar_pontos ? (Number(values.pontos_comprados) || 0) : 0;
     const custoPontos = values.comprar_pontos ? (Number(values.valor_total_compra) || 0) : 0;
     const custoTotal = Number(values.custo_reais ?? 0) + custoPontos;
@@ -214,7 +199,7 @@ export function TransferenciasPageClient() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Conta origem *</Label>
-                    <Select {...register("conta_origem_id", { required: true })}>
+                    <Select {...register("conta_origem_id")}>
                       <option value="">Selecione...</option>
                       {contas?.map((c) => (
                         <option key={c.id} value={c.id}>
@@ -222,10 +207,11 @@ export function TransferenciasPageClient() {
                         </option>
                       ))}
                     </Select>
+                    <FieldError error={formState.errors.conta_origem_id} />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Conta destino *</Label>
-                    <Select {...register("conta_destino_id", { required: true })}>
+                    <Select {...register("conta_destino_id")}>
                       <option value="">Selecione...</option>
                       {contas?.map((c) => (
                         <option key={c.id} value={c.id}>
@@ -233,6 +219,7 @@ export function TransferenciasPageClient() {
                         </option>
                       ))}
                     </Select>
+                    <FieldError error={formState.errors.conta_destino_id} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -241,8 +228,9 @@ export function TransferenciasPageClient() {
                     <Input
                       type="number"
                       step="any"
-                      {...register("quantidade_origem", { required: true, valueAsNumber: true })}
+                      {...register("quantidade_origem", { valueAsNumber: true })}
                     />
+                    <FieldError error={formState.errors.quantidade_origem} />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Taxa conv.</Label>
@@ -251,6 +239,7 @@ export function TransferenciasPageClient() {
                       step="0.01"
                       {...register("taxa_conversao", { valueAsNumber: true })}
                     />
+                    <FieldError error={formState.errors.taxa_conversao} />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Bônus %</Label>
@@ -259,6 +248,7 @@ export function TransferenciasPageClient() {
                       step="any"
                       {...register("bonus_percentual", { valueAsNumber: true })}
                     />
+                    <FieldError error={formState.errors.bonus_percentual} />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Custo R$</Label>
@@ -267,11 +257,13 @@ export function TransferenciasPageClient() {
                       step="0.01"
                       {...register("custo_reais", { valueAsNumber: true })}
                     />
+                    <FieldError error={formState.errors.custo_reais} />
                   </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Data *</Label>
-                  <Input type="date" {...register("data", { required: true })} />
+                  <Input type="date" {...register("data")} />
+                  <FieldError error={formState.errors.data} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Observação</Label>
@@ -301,6 +293,7 @@ export function TransferenciasPageClient() {
                             placeholder="0"
                             {...register("pontos_comprados", { valueAsNumber: true })}
                           />
+                          <FieldError error={formState.errors.pontos_comprados} />
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs">Valor total pago (R$)</Label>
@@ -311,6 +304,7 @@ export function TransferenciasPageClient() {
                             placeholder="0,00"
                             {...register("valor_total_compra", { valueAsNumber: true })}
                           />
+                          <FieldError error={formState.errors.valor_total_compra} />
                         </div>
                         <div className="col-span-2 rounded bg-muted/50 px-3 py-2 text-xs space-y-0.5">
                           <div className="flex justify-between">

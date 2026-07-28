@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { Plus, Trash2, Wallet } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, type Resolver } from "react-hook-form";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { ConfigWarning } from "@/components/shared/config-warning";
 import { EmptyState } from "@/components/shared/empty-state";
+import { FieldError } from "@/components/shared/field-error";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -34,14 +36,8 @@ import {
 } from "@/lib/queries/contas";
 import { useTitulares } from "@/lib/queries/titulares";
 import { useProgramas } from "@/lib/queries/programas";
+import { contaSchema, type ContaFormValues } from "@/lib/schemas";
 import { formatNumber } from "@/lib/utils";
-
-interface FormValues {
-  titular_id: string;
-  programa_id: string;
-  numero_conta?: string;
-  saldo_inicial?: number;
-}
 
 export function ContasPageClient() {
   const { data: contas, isLoading } = useContasComSaldo();
@@ -50,9 +46,12 @@ export function ContasPageClient() {
   const createMut = useCreateConta();
   const deleteMut = useDeleteConta();
   const [open, setOpen] = useState(false);
-  const { register, handleSubmit, reset, formState } = useForm<FormValues>();
+  const { register, handleSubmit, reset, formState } = useForm<ContaFormValues>({
+    resolver: zodResolver(contaSchema) as Resolver<ContaFormValues>,
+    defaultValues: { saldo_inicial: 0 },
+  });
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = async (values: ContaFormValues) => {
     try {
       await createMut.mutateAsync({
         titular_id: values.titular_id,
@@ -61,7 +60,7 @@ export function ContasPageClient() {
         saldo_inicial: Number(values.saldo_inicial ?? 0),
       });
       toast.success("Conta criada");
-      reset();
+      reset({ saldo_inicial: 0 });
       setOpen(false);
     } catch (e) {
       toast.error((e as Error).message);
@@ -100,7 +99,7 @@ export function ContasPageClient() {
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="titular_id">Titular *</Label>
-                  <Select id="titular_id" {...register("titular_id", { required: true })}>
+                  <Select id="titular_id" {...register("titular_id")}>
                     <option value="">Selecione...</option>
                     {titulares?.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -108,10 +107,11 @@ export function ContasPageClient() {
                       </option>
                     ))}
                   </Select>
+                  <FieldError error={formState.errors.titular_id} />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="programa_id">Programa *</Label>
-                  <Select id="programa_id" {...register("programa_id", { required: true })}>
+                  <Select id="programa_id" {...register("programa_id")}>
                     <option value="">Selecione...</option>
                     {programas?.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -119,6 +119,7 @@ export function ContasPageClient() {
                       </option>
                     ))}
                   </Select>
+                  <FieldError error={formState.errors.programa_id} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -131,9 +132,9 @@ export function ContasPageClient() {
                       id="saldo_inicial"
                       type="number"
                       step="any"
-                      defaultValue={0}
                       {...register("saldo_inicial", { valueAsNumber: true })}
                     />
+                    <FieldError error={formState.errors.saldo_inicial} />
                   </div>
                 </div>
                 <DialogFooter>

@@ -1,273 +1,292 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Upload, AlertCircle, CheckCircle2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Download,
+  FileSpreadsheet,
+  Upload,
+} from "lucide-react";
 import { toast } from "sonner";
 import { ConfigWarning } from "@/components/shared/config-warning";
-import { useContas } from "@/lib/queries/contas";
+import { FieldError } from "@/components/shared/field-error";
+import { PageHeader } from "@/components/shared/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { CSV_TEMPLATE, rowsFromCsv } from "@/lib/import/csv";
+import {
+  buildPreviewRows,
+  type ContaLookup,
+  type PreviewRow,
+} from "@/lib/import/preview";
+import { useContasComSaldo } from "@/lib/queries/contas";
+import { useCreateMovimentacoesBatch } from "@/lib/queries/movimentacoes";
 import { useProgramas } from "@/lib/queries/programas";
-import { useCreateMovimentacao } from "@/lib/queries/movimentacoes";
-import { formatNumber } from "@/lib/utils";
-import type { TipoMovimentacao } from "@/types/database";
+import { useRegrasValidade } from "@/lib/queries/regras-validade";
+import { useTitulares } from "@/lib/queries/titulares";
+import { formatBRL, formatDate, formatNumber } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
-// Tipos cuja movimentação reduz o saldo (quantidade deve ser negativa).
-const TIPOS_NEGATIVOS: TipoMovimentacao[] = [
-  "debito",
-  "expiracao",
-  "transferencia_saida",
-];
-
-interface RowData {
-  programa: string;
-  tipo: string;
-  valor_pago: number;
-  quantidade: number;
-  data: string;
-}
-
-/** Mapeia nomes comuns da planilha para os nomes do seed (`0002_seed_programas.sql`). */
-function normalizarPrograma(programa: string): string {
-  const prog = programa.toLowerCase().trim();
-  if (prog.includes("all accor") || prog.includes("accor")) return "All Accor";
-  if (prog.includes("tudoazul") || prog.includes("tudo azul") || prog.includes("azul")) {
-    return "TudoAzul";
-  }
-  if (prog.includes("livelo")) return "Livelo";
-  if (prog.includes("gol") || prog.includes("smiles")) return "Smiles";
-  if (prog.includes("esfera")) return "Esfera";
-  if (prog.includes("latam")) return "Latam Pass";
-  if (prog.includes("iupp")) return "Iupp";
-  if (prog.includes("hilton")) return "Hilton Honors";
-  if (prog.includes("marriott") || prog.includes("bonvoy")) return "Marriott Bonvoy";
-  if (prog.includes("lifemiles") || prog.includes("life miles")) return "LifeMiles";
-  if (prog.includes("membership") || prog.includes("amex")) return "Membership Rewards";
-  if (prog.includes("itaú") || prog.includes("itau")) return "Pontos Itaú";
-  if (prog.includes("atacadão") || prog.includes("atacadao")) return "Atacadão Pontos";
-  return programa.trim();
-}
-
-function parseDataBr(data: string): string | null {
-  const parts = data.split("/");
-  if (parts.length !== 3) return null;
-  const [dia, mes, anoRaw] = parts;
-  if (!/^\d{1,2}$/.test(dia) || !/^\d{1,2}$/.test(mes) || !/^\d{2,4}$/.test(anoRaw)) {
-    return null;
-  }
-  const ano = anoRaw.length === 2 ? `20${anoRaw}` : anoRaw;
-  return `${ano}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
+function downloadTemplate() {
+  const blob = new Blob([CSV_TEMPLATE], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "modelo-importacao-milhas.csv";
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export function ImportarPage() {
-  const { data: contas } = useContas();
+  const { data: contas } = useContasComSaldo();
   const { data: programas } = useProgramas();
-  const createMovMut = useCreateMovimentacao();
+  const { data: titulares } = useTitulares();
+  const { data: regras } = useRegrasValidade();
+  const batchMut = useCreateMovimentacoesBatch();
 
-  const [rows, setRows] = useState<RowData[]>([]);
+  const [titularId, setTitularId] = useState<string>("");
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [parseWarnings, setParseWarnings] = useState<string[]>([]);
+  const [preview, setPreview] = useState<PreviewRow[]>([]);
   const [importing, setImporting] = useState(false);
-  const [importLog, setImportLog] = useState<string[]>([]);
+  const [importDone, setImportDone] = useState<{
+    ok: number;
+    erros: string[];
+  } | null>(null);
+  const [dragOver, setDragOver] = useState(false);
 
-  // Mapear tipo de movimentação para TipoMovimentacao válido no BD
-  // Tipos válidos: "credito" | "debito" | "transferencia_saida" | "transferencia_entrada" | "expiracao" | "assinatura" | "ajuste"
-  const mapearTipo = (tipo: string): TipoMovimentacao => {
-    const t = tipo.toLowerCase().trim();
-    if (t.includes("assinatura")) return "assinatura";
-    if (t.includes("transferencia_entrada") || t === "transferencia entrada") return "transferencia_entrada";
-    if (t.includes("transferencia_saida") || t === "transferencia saida") return "transferencia_saida";
-    if (t.includes("transferencia") || t.includes("transferência")) return "transferencia_entrada";
-    if (t.includes("resgate")) return "debito";
-    if (t.includes("ajuste")) return "ajuste";
-    if (t.includes("expiracao") || t.includes("expiração")) return "expiracao";
-    // compra, bonus, reativação, etc. → crédito
-    return "credito";
-  };
+  const contasLookup: ContaLookup[] = useMemo(
+    () =>
+      (contas ?? []).map((c) => ({
+        id: c.id,
+        titular_id: c.titular_id,
+        programa_id: c.programa_id,
+        titularNome: c.titular?.nome ?? null,
+        programaNome: c.programa?.nome ?? null,
+        validadeMeses: c.programa?.validade_meses ?? null,
+      })),
+    [contas]
+  );
 
-  // Detectar índices de colunas baseado no header
-  const detectarColunas = (header: string[]): { [key: string]: number } => {
-    const indices: { [key: string]: number } = {
-      programa: -1,
-      tipo: -1,
-      valor: -1,
-      quantidade: -1,
-      data: -1,
-    };
+  const rebuildPreview = useCallback(
+    (rawText: string, selectedTitular: string) => {
+      const { rows, warnings } = rowsFromCsv(rawText);
+      setParseWarnings(warnings);
+      const built = buildPreviewRows({
+        rawRows: rows,
+        programas: programas ?? [],
+        contas: contasLookup,
+        regras: regras ?? [],
+        titularId: selectedTitular || null,
+      });
+      setPreview(built);
+      setImportDone(null);
+      return built;
+    },
+    [programas, contasLookup, regras]
+  );
 
-    for (let i = 0; i < header.length; i++) {
-      const col = header[i].toLowerCase().trim();
-      if (col.includes("programa") || col.includes("fidelida")) indices.programa = i;
-      if (col.includes("tipo") || col.includes("tipo de")) indices.tipo = i;
-      if (col.includes("valor") || col.includes("pago") || col.includes("r$")) indices.valor = i;
-      if (col.includes("quantidade") || col.includes("milhas") || col.includes("pontos")) indices.quantidade = i;
-      if (col.includes("data")) indices.data = i;
-    }
+  const [rawCsv, setRawCsv] = useState<string | null>(null);
 
-    return indices;
-  };
-
-  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
+  const processFile = useCallback(
+    async (file: File) => {
+      if (!file.name.toLowerCase().endsWith(".csv") && file.type !== "text/csv") {
+        toast.error("Selecione um arquivo .csv");
+        return;
+      }
       try {
-        const csv = event.target?.result as string;
-        const lines = csv.split("\n");
-        const newRows: RowData[] = [];
-
-        if (lines.length < 2) {
-          toast.error("Arquivo vazio");
+        const text = await file.text();
+        setRawCsv(text);
+        setFileName(file.name);
+        const built = rebuildPreview(text, titularId);
+        if (built.length === 0) {
+          toast.error("Nenhuma linha válida encontrada no arquivo");
           return;
         }
-
-        // Parse header
-        const headerParts = lines[0].split(",").map((p) => p.trim());
-        const colIndices = detectarColunas(headerParts);
-
-        // Validar se encontrou todas as colunas
-        if (Object.values(colIndices).some((idx) => idx === -1)) {
-          toast.warning(
-            "Não foi possível detectar todas as colunas automaticamente. Verifique a ordem: Programa, Tipo, Valor, Quantidade, Data"
-          );
-        }
-
-        // Processar linhas
-        for (let i = 1; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
-
-          const parts = line.split(",").map((p) => p.trim());
-          if (parts.length < 5) continue;
-
-          const programa = colIndices.programa >= 0 ? parts[colIndices.programa] : parts[0];
-          const tipo = colIndices.tipo >= 0 ? parts[colIndices.tipo] : parts[1];
-          const valor = colIndices.valor >= 0 ? parts[colIndices.valor] : parts[2];
-          const qtd = colIndices.quantidade >= 0 ? parts[colIndices.quantidade] : parts[3];
-          const data = colIndices.data >= 0 ? parts[colIndices.data] : parts[4];
-
-          if (!programa || !tipo || !data) continue;
-
-          // Limpar e parsear valores
-          const valorNum = parseFloat(valor.replace("R$", "").replace(/\./g, "").replace(",", ".")) || 0;
-          const qtdNum = parseFloat(qtd.replace(/\./g, "").replace(",", ".")) || 0;
-
-          if (!parseDataBr(data.trim())) continue;
-
-          newRows.push({
-            programa: normalizarPrograma(programa),
-            tipo: tipo.trim(),
-            valor_pago: Math.abs(valorNum),
-            quantidade: Math.abs(qtdNum),
-            data: data.trim(),
-          });
-        }
-
-        setRows(newRows);
-        toast.success(`Importado: ${newRows.length} linhas`);
-      } catch (err) {
-        toast.error("Erro ao ler arquivo CSV");
-        console.error(err);
+        toast.success(`${built.length} linha(s) lida(s)`);
+      } catch (e) {
+        toast.error("Erro ao ler o arquivo CSV");
+        console.error(e);
       }
-    };
-    reader.readAsText(file);
-  }, []);
+    },
+    [rebuildPreview, titularId]
+  );
 
-  const handleImport = useCallback(async () => {
-    if (rows.length === 0) {
-      toast.error("Nenhuma linha para importar");
+  const onTitularChange = (value: string) => {
+    setTitularId(value);
+    if (rawCsv) rebuildPreview(rawCsv, value);
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) void processFile(file);
+    e.target.value = "";
+  };
+
+  const okRows = useMemo(() => preview.filter((r) => r.status === "ok"), [preview]);
+  const erroRows = useMemo(() => preview.filter((r) => r.status === "erro"), [preview]);
+
+  const resumo = useMemo(() => {
+    const milhasCredito = okRows
+      .filter((r) => r.quantidadeAssinada > 0)
+      .reduce((s, r) => s + r.quantidadeAssinada, 0);
+    const milhasDebito = okRows
+      .filter((r) => r.quantidadeAssinada < 0)
+      .reduce((s, r) => s + Math.abs(r.quantidadeAssinada), 0);
+    const custo = okRows.reduce((s, r) => s + r.valorPago, 0);
+    return { milhasCredito, milhasDebito, custo };
+  }, [okRows]);
+
+  const handleImport = async () => {
+    if (okRows.length === 0) {
+      toast.error("Nenhuma linha válida para importar");
+      return;
+    }
+    if (
+      !confirm(
+        `Importar ${okRows.length} movimentação(ões)?` +
+          (erroRows.length ? `\n${erroRows.length} linha(s) com erro serão ignoradas.` : "")
+      )
+    ) {
       return;
     }
 
     setImporting(true);
-    setImportLog([]);
-    const log: string[] = [];
-
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      try {
-        // Encontrar a conta do programa (match exato ou parcial)
-        const programa = programas?.find(
-          (p) =>
-            p.nome.toLowerCase() === row.programa.toLowerCase() ||
-            p.nome.toLowerCase().includes(row.programa.toLowerCase()) ||
-            row.programa.toLowerCase().includes(p.nome.toLowerCase())
-        );
-        if (!programa) {
-          log.push(`❌ Linha ${i + 2}: Programa "${row.programa}" não encontrado`);
-          continue;
-        }
-
-        const conta = contas?.find((c) => c.programa_id === programa.id);
-        if (!conta) {
-          log.push(
-            `❌ Linha ${i + 2}: Nenhuma conta para programa "${row.programa}"`
-          );
-          continue;
-        }
-
-        const dataFormatada = parseDataBr(row.data);
-        if (!dataFormatada) {
-          log.push(`❌ Linha ${i + 2}: Data inválida "${row.data}"`);
-          continue;
-        }
-
-        // Criar movimentação (aplica o sinal correto conforme o tipo)
-        const tipoMov = mapearTipo(row.tipo);
-        const quantidade = TIPOS_NEGATIVOS.includes(tipoMov)
-          ? -Math.abs(row.quantidade)
-          : Math.abs(row.quantidade);
-        await createMovMut.mutateAsync({
-          conta_id: conta.id,
-          tipo: tipoMov,
-          quantidade,
-          data: dataFormatada,
-          data_expiracao: null,
-          descricao: `Importação: ${row.tipo}`,
-        });
-
-        log.push(
-          `✅ Linha ${i + 2}: ${formatNumber(row.quantidade)} milhas em ${row.programa}`
-        );
-      } catch (err) {
-        log.push(
-          `❌ Linha ${i + 2}: ${(err as Error).message}`
-        );
-      }
+    setImportDone(null);
+    try {
+      const payload = okRows.map((r) => ({
+        conta_id: r.contaId!,
+        tipo: r.tipo,
+        quantidade: r.quantidadeAssinada,
+        data: r.data!,
+        data_expiracao: r.dataExpiracao,
+        origem: r.origem,
+        descricao: r.descricao,
+      }));
+      const result = await batchMut.mutateAsync(payload);
+      setImportDone({ ok: result.inserted, erros: [] });
+      toast.success(`${result.inserted} movimentação(ões) importada(s)`);
+      setPreview([]);
+      setRawCsv(null);
+      setFileName(null);
+      setParseWarnings([]);
+    } catch (e) {
+      const msg = (e as Error).message;
+      setImportDone({ ok: 0, erros: [msg] });
+      toast.error(msg);
+    } finally {
+      setImporting(false);
     }
+  };
 
-    setImportLog(log);
-    setImporting(false);
-    toast.success("Importação finalizada");
-  }, [rows, programas, contas, createMovMut]);
-
-  const resumo = useMemo(() => {
-    return {
-      total: rows.length,
-      milhas: rows.reduce((acc, r) => acc + r.quantidade, 0),
-      custo: rows.reduce((acc, r) => acc + r.valor_pago, 0),
-    };
-  }, [rows]);
+  const limpar = () => {
+    setPreview([]);
+    setRawCsv(null);
+    setFileName(null);
+    setParseWarnings([]);
+    setImportDone(null);
+  };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
       <ConfigWarning />
+      <PageHeader
+        title="Importar CSV"
+        description="Importe extratos ou planilhas de movimentações com preview e validação"
+        action={
+          <Button variant="outline" onClick={downloadTemplate}>
+            <Download className="h-4 w-4" /> Baixar modelo
+          </Button>
+        }
+      />
+
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5" />
-            Importar movimentações
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileSpreadsheet className="h-4 w-4" />
+            Formato esperado
           </CardTitle>
           <CardDescription>
-            Carregue um arquivo CSV com os dados da sua planilha de controle
+            Colunas: <strong>Programa</strong>, <strong>Tipo</strong>,{" "}
+            <strong>Valor Pago</strong> (opcional), <strong>Quantidade</strong>,{" "}
+            <strong>Data</strong> (DD/MM/AAAA ou AAAA-MM-DD). Opcionais: Origem, Descricao.
+            Aceita vírgula ou ponto-e-vírgula; campos entre aspas.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="border-2 border-dashed rounded-lg p-8 text-center">
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">1. Conta destino</CardTitle>
+          <CardDescription>
+            Se houver mais de um titular com o mesmo programa, escolha o titular para
+            resolver a conta correta.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 max-w-md">
+          <Label htmlFor="titular-import">Titular (opcional)</Label>
+          <Select
+            id="titular-import"
+            value={titularId}
+            onChange={(e) => onTitularChange(e.target.value)}
+          >
+            <option value="">Todos / automático</option>
+            {titulares?.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nome}
+              </option>
+            ))}
+          </Select>
+          {!contas?.length && (
+            <FieldError error="Cadastre ao menos uma conta antes de importar." />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">2. Arquivo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div
+            className={cn(
+              "border-2 border-dashed rounded-lg p-8 text-center transition-colors",
+              dragOver ? "border-primary bg-muted/50" : "border-muted-foreground/25"
+            )}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              const file = e.dataTransfer.files?.[0];
+              if (file) void processFile(file);
+            }}
+          >
             <input
               type="file"
-              accept=".csv"
-              onChange={handleFileUpload}
+              accept=".csv,text/csv"
+              onChange={handleFileInput}
               className="hidden"
               id="csv-input"
             />
@@ -276,59 +295,154 @@ export function ImportarPage() {
               className="cursor-pointer flex flex-col items-center gap-2"
             >
               <Upload className="h-8 w-8 text-muted-foreground" />
-              <span className="text-sm font-medium">Clique para selecionar arquivo CSV</span>
-              <span className="text-xs text-muted-foreground">ou arraste aqui</span>
+              <span className="text-sm font-medium">
+                {fileName ? fileName : "Clique ou arraste um arquivo CSV"}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                UTF-8 · vírgula ou ponto-e-vírgula
+              </span>
             </label>
           </div>
 
-          {rows.length > 0 && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="rounded-lg bg-muted p-4">
-                  <div className="text-sm text-muted-foreground">Linhas</div>
-                  <div className="text-2xl font-bold">{resumo.total}</div>
-                </div>
-                <div className="rounded-lg bg-muted p-4">
-                  <div className="text-sm text-muted-foreground">Milhas</div>
-                  <div className="text-2xl font-bold">{formatNumber(resumo.milhas)}</div>
-                </div>
-                <div className="rounded-lg bg-muted p-4">
-                  <div className="text-sm text-muted-foreground">Custo total (R$)</div>
-                  <div className="text-2xl font-bold">{formatNumber(resumo.custo)}</div>
-                </div>
-              </div>
-
-              <Button
-                onClick={handleImport}
-                disabled={importing}
-                className="w-full"
-                size="lg"
-              >
-                {importing ? "Importando..." : "Importar movimentações"}
-              </Button>
-            </div>
+          {parseWarnings.length > 0 && (
+            <ul className="mt-3 space-y-1 text-sm text-amber-700 dark:text-amber-400">
+              {parseWarnings.map((w) => (
+                <li key={w} className="flex gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  {w}
+                </li>
+              ))}
+            </ul>
           )}
         </CardContent>
       </Card>
 
-      {importLog.length > 0 && (
+      {preview.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Resultado da importação</CardTitle>
+            <CardTitle className="text-base">3. Preview</CardTitle>
+            <CardDescription>
+              Revise as linhas antes de gravar. Créditos recebem data de expiração
+              automática pelas regras do programa.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2 max-h-96 overflow-y-auto text-sm font-mono">
-              {importLog.map((msg, i) => (
-                <div key={i} className="flex items-start gap-2">
-                  {msg.startsWith("✅") ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
-                  )}
-                  <span>{msg}</span>
-                </div>
-              ))}
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-lg bg-muted p-3">
+                <div className="text-xs text-muted-foreground">Válidas</div>
+                <div className="text-xl font-bold text-emerald-600">{okRows.length}</div>
+              </div>
+              <div className="rounded-lg bg-muted p-3">
+                <div className="text-xs text-muted-foreground">Com erro</div>
+                <div className="text-xl font-bold text-destructive">{erroRows.length}</div>
+              </div>
+              <div className="rounded-lg bg-muted p-3">
+                <div className="text-xs text-muted-foreground">Créditos</div>
+                <div className="text-xl font-bold">{formatNumber(resumo.milhasCredito)}</div>
+              </div>
+              <div className="rounded-lg bg-muted p-3">
+                <div className="text-xs text-muted-foreground">Custo (R$)</div>
+                <div className="text-xl font-bold">{formatBRL(resumo.custo)}</div>
+              </div>
             </div>
+
+            <div className="border rounded-lg overflow-auto max-h-[420px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">#</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Programa</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead className="text-right">Qtd</TableHead>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Expira</TableHead>
+                    <TableHead>Titular</TableHead>
+                    <TableHead>Detalhe</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {preview.map((r) => (
+                    <TableRow key={r.lineNumber}>
+                      <TableCell className="text-muted-foreground">{r.lineNumber}</TableCell>
+                      <TableCell>
+                        {r.status === "ok" ? (
+                          <Badge variant="default">OK</Badge>
+                        ) : (
+                          <Badge variant="warning">Erro</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium">{r.programaLabel}</TableCell>
+                      <TableCell className="text-xs">{r.tipo}</TableCell>
+                      <TableCell
+                        className={cn(
+                          "text-right font-mono",
+                          r.quantidadeAssinada < 0 ? "text-red-600" : "text-emerald-600"
+                        )}
+                      >
+                        {r.quantidadeAssinada > 0 ? "+" : ""}
+                        {formatNumber(r.quantidadeAssinada || r.quantidade)}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {r.data ? formatDate(r.data) : "—"}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {r.dataExpiracao ? formatDate(r.dataExpiracao) : "—"}
+                      </TableCell>
+                      <TableCell className="text-xs">{r.titularNome ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[24ch] truncate">
+                        {r.erro ?? r.descricao}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                onClick={() => void handleImport()}
+                disabled={importing || okRows.length === 0}
+                className="flex-1"
+                size="lg"
+              >
+                {importing
+                  ? "Importando..."
+                  : `Importar ${okRows.length} movimentação(ões)`}
+              </Button>
+              <Button variant="outline" onClick={limpar} disabled={importing}>
+                Limpar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {importDone && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              {importDone.ok > 0 ? (
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              ) : (
+                <AlertCircle className="h-4 w-4 text-destructive" />
+              )}
+              Resultado
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm space-y-2">
+            {importDone.ok > 0 && (
+              <p>
+                <strong>{importDone.ok}</strong> movimentação(ões) gravada(s) com sucesso.
+                O consumo FIFO e os alertas de expiração já consideram os novos créditos.
+              </p>
+            )}
+            {importDone.erros.map((e) => (
+              <p key={e} className="text-destructive flex gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                {e}
+              </p>
+            ))}
           </CardContent>
         </Card>
       )}

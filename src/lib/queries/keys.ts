@@ -12,6 +12,8 @@ export const queryKeys = {
     contaId
       ? (["movimentacoes", contaId] as const)
       : (["movimentacoes"] as const),
+  expiracoes: ["expiracoes"] as const,
+  milhasExpirando: (dias: number) => ["milhas-expirando", dias] as const,
   transferencias: ["transferencias"] as const,
   assinaturas: ["assinaturas"] as const,
   metas: ["metas"] as const,
