@@ -26,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatCpf, isCompleteCpf, normalizeCpf } from "@/lib/cpf";
 import {
   useCreateTitular,
   useDeleteTitular,
@@ -40,6 +41,11 @@ interface FormValues {
   email?: string;
 }
 
+const cpfFieldRules = {
+  validate: (value?: string) =>
+    !value?.trim() || isCompleteCpf(value) || "Informe um CPF completo (000.000.000-00)",
+};
+
 export function TitularesPageClient() {
   const { data, isLoading } = useTitulares();
   const createMut = useCreateTitular();
@@ -52,11 +58,14 @@ export function TitularesPageClient() {
   const createForm = useForm<FormValues>();
   const editForm = useForm<FormValues>();
 
+  const createCpfRegister = createForm.register("cpf", cpfFieldRules);
+  const editCpfRegister = editForm.register("cpf", cpfFieldRules);
+
   const onSubmitCreate = async (values: FormValues) => {
     try {
       await createMut.mutateAsync({
         nome: values.nome.trim(),
-        cpf: values.cpf?.trim() || null,
+        cpf: normalizeCpf(values.cpf),
         email: values.email?.trim() || null,
       });
       toast.success("Titular criado");
@@ -71,7 +80,7 @@ export function TitularesPageClient() {
     setEditingTitular(titular);
     editForm.reset({
       nome: titular.nome,
-      cpf: titular.cpf ?? "",
+      cpf: titular.cpf ? formatCpf(titular.cpf) : "",
       email: titular.email ?? "",
     });
   };
@@ -82,7 +91,7 @@ export function TitularesPageClient() {
       await updateMut.mutateAsync({
         id: editingTitular.id,
         nome: values.nome.trim(),
-        cpf: values.cpf?.trim() || null,
+        cpf: normalizeCpf(values.cpf),
         email: values.email?.trim() || null,
       });
       toast.success("Titular atualizado");
@@ -132,7 +141,22 @@ export function TitularesPageClient() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="create-cpf">CPF</Label>
-                    <Input id="create-cpf" {...createForm.register("cpf")} placeholder="000.000.000-00" />
+                    <Input
+                      id="create-cpf"
+                      inputMode="numeric"
+                      maxLength={14}
+                      placeholder="000.000.000-00"
+                      {...createCpfRegister}
+                      onChange={(e) => {
+                        e.target.value = formatCpf(e.target.value);
+                        void createCpfRegister.onChange(e);
+                      }}
+                    />
+                    {createForm.formState.errors.cpf && (
+                      <p className="text-sm text-destructive">
+                        {createForm.formState.errors.cpf.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="create-email">Email</Label>
@@ -171,7 +195,22 @@ export function TitularesPageClient() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="edit-cpf">CPF</Label>
-                <Input id="edit-cpf" {...editForm.register("cpf")} placeholder="000.000.000-00" />
+                <Input
+                  id="edit-cpf"
+                  inputMode="numeric"
+                  maxLength={14}
+                  placeholder="000.000.000-00"
+                  {...editCpfRegister}
+                  onChange={(e) => {
+                    e.target.value = formatCpf(e.target.value);
+                    void editCpfRegister.onChange(e);
+                  }}
+                />
+                {editForm.formState.errors.cpf && (
+                  <p className="text-sm text-destructive">
+                    {editForm.formState.errors.cpf.message}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="edit-email">Email</Label>
@@ -213,7 +252,9 @@ export function TitularesPageClient() {
               {data.map((t) => (
                 <TableRow key={t.id}>
                   <TableCell className="font-medium">{t.nome}</TableCell>
-                  <TableCell className="text-muted-foreground">{t.cpf ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {t.cpf ? formatCpf(t.cpf) : "—"}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{t.email ?? "—"}</TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-1">
