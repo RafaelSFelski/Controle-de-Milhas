@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
-import type { CategoriaPrograma, Programa } from "@/types/database";
+import type { CategoriaPrograma, Programa, UnidadePrograma } from "@/types/database";
 import { queryKeys } from "./keys";
 
 export function useProgramas() {
@@ -28,6 +28,7 @@ export function useCreatePrograma() {
       categoria: CategoriaPrograma;
       cor: string;
       validade_meses: number;
+      unidade: UnidadePrograma;
     }) => {
       const { data, error } = await getSupabase()
         .from("programas")
@@ -36,6 +37,7 @@ export function useCreatePrograma() {
           categoria: input.categoria,
           cor: input.cor,
           validade_meses: input.validade_meses,
+          unidade: input.unidade,
           is_default: false,
           logo_url: null,
         })
@@ -57,6 +59,7 @@ export function useUpdatePrograma() {
       categoria: CategoriaPrograma;
       cor: string;
       validade_meses: number;
+      unidade: UnidadePrograma;
     }) => {
       const { data, error } = await getSupabase()
         .from("programas")
@@ -65,6 +68,7 @@ export function useUpdatePrograma() {
           categoria: input.categoria,
           cor: input.cor,
           validade_meses: input.validade_meses,
+          unidade: input.unidade,
         })
         .eq("id", input.id)
         .select()

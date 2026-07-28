@@ -10,6 +10,8 @@ export type CategoriaPrograma =
   | "hotel"
   | "outro";
 
+export type UnidadePrograma = "milhas" | "pontos";
+
 export type TipoMovimentacao =
   | "credito"
   | "debito"
@@ -36,6 +38,7 @@ export interface Programa {
   cor: string;
   logo_url: string | null;
   validade_meses: number;
+  unidade: UnidadePrograma;
   is_default: boolean;
   created_at: string;
 }
