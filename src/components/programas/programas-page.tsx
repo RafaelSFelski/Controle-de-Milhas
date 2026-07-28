@@ -281,16 +281,14 @@ export function ProgramasPageClient() {
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      {!p.is_default && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onDelete(p.id, p.nome)}
-                          aria-label="Excluir"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onDelete(p.id, p.nome)}
+                        aria-label="Excluir"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
