@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# migração export/import dados (JSON com dados pessoais — não versionar)
+.migration-export/
