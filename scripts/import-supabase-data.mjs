@@ -33,7 +33,7 @@ for (const table of TABLES) {
     console.log(`OK  ${table}: nenhum dado para importar`);
     continue;
   }
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from(table)
     .upsert(rows, { onConflict: 'id', count: 'exact' });
   if (error) {

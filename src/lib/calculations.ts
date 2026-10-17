@@ -1,6 +1,6 @@
 // Cálculos centralizados do dashboard de milhas.
 
-import { addMonths, differenceInDays, parseISO } from "date-fns";
+import { addMonths, parseISO } from "date-fns";
 
 /**
  * Calcula a quantidade de milhas no destino após aplicar taxa de conversão e bônus.
@@ -27,52 +27,6 @@ export function valorEstimadoCarteira(
   return saldosPorPrograma.reduce((acc, item) => {
     const cotacao = cotacoesMap[item.programa_id] ?? 0;
     return acc + (item.saldo / 1000) * cotacao;
-  }, 0);
-}
-
-/**
- * Cotação atual (mais recente) por programa.
- */
-export function cotacoesAtuaisPorPrograma(
-  cotacoes: Array<{ programa_id: string; data: string; valor_milheiro: number }>
-): Record<string, number> {
-  const map: Record<string, { data: string; valor: number }> = {};
-  for (const c of cotacoes) {
-    const cur = map[c.programa_id];
-    if (!cur || c.data > cur.data) {
-      map[c.programa_id] = { data: c.data, valor: Number(c.valor_milheiro) };
-    }
-  }
-  const out: Record<string, number> = {};
-  for (const [k, v] of Object.entries(map)) out[k] = v.valor;
-  return out;
-}
-
-/**
- * Soma das milhas que expiram dentro de uma janela (em dias) a partir de hoje.
- * Prefira `quantidade_restante` (pós-FIFO) quando disponível; cai em `quantidade`.
- */
-export function milhasExpirandoEmDias(
-  movimentacoes: Array<{
-    quantidade: number;
-    quantidade_restante?: number | null;
-    data_expiracao: string | null;
-  }>,
-  dias: number
-): number {
-  const hoje = new Date();
-  const limite = new Date();
-  limite.setDate(hoje.getDate() + dias);
-
-  return movimentacoes.reduce((acc, m) => {
-    const restante =
-      m.quantidade_restante != null
-        ? Number(m.quantidade_restante)
-        : Number(m.quantidade);
-    if (!m.data_expiracao || restante <= 0) return acc;
-    const exp = parseISO(m.data_expiracao);
-    if (exp >= hoje && exp <= limite) return acc + restante;
-    return acc;
   }, 0);
 }
 
@@ -109,7 +63,7 @@ export function milhasEfetivasMensais(
  * Considera bônus percentual e fixo no denominador (milhas efetivas).
  * Retorna 0 se milhas efetivas for inválido.
  */
-export function custoPorMilha(
+function custoPorMilha(
   valorMensal: number,
   milhasMensais: number,
   bonusPercentual = 0,
@@ -132,17 +86,6 @@ export function custoPorMilheiro(
   return (
     custoPorMilha(valorMensal, milhasMensais, bonusPercentual, bonusFixo) * 1000
   );
-}
-
-/**
- * Dias até expiração (positivo: futuro, negativo: já expirou).
- */
-export function diasAteExpiracao(dataExpiracao: string | Date): number {
-  const exp =
-    typeof dataExpiracao === "string"
-      ? parseISO(dataExpiracao)
-      : dataExpiracao;
-  return differenceInDays(exp, new Date());
 }
 
 /**

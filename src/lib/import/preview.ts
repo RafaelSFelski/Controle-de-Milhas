@@ -14,7 +14,7 @@ import {
   type CsvRawRow,
 } from "./csv";
 
-export type PreviewStatus = "ok" | "erro";
+type PreviewStatus = "ok" | "erro";
 
 export interface ContaLookup {
   id: string;

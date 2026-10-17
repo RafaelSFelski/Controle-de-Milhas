@@ -1,5 +1,5 @@
 /** Remove tudo que não for dígito, limitando a 11 caracteres. */
-export function stripCpfDigits(value: string): string {
+function stripCpfDigits(value: string): string {
   return value.replace(/\D/g, "").slice(0, 11);
 }
 

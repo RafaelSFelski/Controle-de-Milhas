@@ -13,7 +13,6 @@
     "@hookform/resolvers": "^5.4.0",
     "@supabase/supabase-js": "^2.106.2",
     "@tanstack/react-query": "^5.100.14",
-    "@tanstack/react-table": "^8.21.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.3.0",
@@ -49,5 +48,11 @@
     "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "knip": {
+    "ignore": [
+      "scripts/export-supabase-data.mjs",
+      "scripts/import-supabase-data.mjs"
+    ]
   }
 }

@@ -63,9 +63,6 @@ export function useContasComSaldo() {
   });
 }
 
-// Alias para compatibilidade com código existente
-export const useContas = useContasComSaldo;
-
 export function useCreateConta() {
   const qc = useQueryClient();
   return useMutation({

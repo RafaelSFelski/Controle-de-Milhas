@@ -5,7 +5,7 @@ import { Calculator } from "lucide-react";
 import { useAssinaturas } from "@/lib/queries/assinaturas";
 import { useTransferencias } from "@/lib/queries/transferencias";
 import { useCotacoesAtuais } from "@/lib/queries/cotacoes";
-import { useContas } from "@/lib/queries/contas";
+import { useContasComSaldo } from "@/lib/queries/contas";
 import { useProgramas } from "@/lib/queries/programas";
 import { useMovimentacoes } from "@/lib/queries/movimentacoes";
 import { milhasEfetivasMensais } from "@/lib/calculations";
@@ -40,7 +40,7 @@ export function CustoMedioCard() {
   const { data: assinaturas } = useAssinaturas();
   const { data: transferencias } = useTransferencias();
   const { data: cotacoes } = useCotacoesAtuais();
-  const { data: contas } = useContas();
+  const { data: contas } = useContasComSaldo();
   const { data: programas } = useProgramas();
   const { data: todasMovimentacoes } = useMovimentacoes();
 
