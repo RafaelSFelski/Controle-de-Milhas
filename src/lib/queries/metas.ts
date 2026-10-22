@@ -117,8 +117,6 @@ export function useUpdateMeta() {
   });
 }
 
-export const useToggleMetaConcluida = useUpdateMeta;
-
 export function useDeleteMeta() {
   const qc = useQueryClient();
   return useMutation({
