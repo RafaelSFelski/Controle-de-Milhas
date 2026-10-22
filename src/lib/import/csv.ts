@@ -21,7 +21,7 @@ export interface CsvRawRow {
 /**
  * Divide uma linha CSV respeitando aspas e delimitador `,` ou `;`.
  */
-export function splitCsvLine(line: string, delimiter: string): string[] {
+function splitCsvLine(line: string, delimiter: string): string[] {
   const parts: string[] = [];
   let cur = "";
   let inQuotes = false;
@@ -49,7 +49,7 @@ export function splitCsvLine(line: string, delimiter: string): string[] {
 }
 
 /** Detecta delimitador pelo header (prioridade `;` se aparecer mais vezes). */
-export function detectDelimiter(headerLine: string): "," | ";" {
+function detectDelimiter(headerLine: string): "," | ";" {
   let commas = 0;
   let semis = 0;
   let inQuotes = false;
@@ -65,7 +65,7 @@ export function detectDelimiter(headerLine: string): "," | ";" {
   return semis > commas ? ";" : ",";
 }
 
-export function parseCsv(text: string): { headers: string[]; rows: string[][] } {
+function parseCsv(text: string): { headers: string[]; rows: string[][] } {
   const normalized = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const lines = normalized.split("\n").filter((l) => l.trim().length > 0);
   if (lines.length === 0) return { headers: [], rows: [] };
@@ -76,7 +76,7 @@ export function parseCsv(text: string): { headers: string[]; rows: string[][] } 
   return { headers, rows };
 }
 
-export function detectColumnIndices(headers: string[]): Record<
+function detectColumnIndices(headers: string[]): Record<
   "programa" | "tipo" | "valor" | "quantidade" | "data" | "descricao" | "origem",
   number
 > {
@@ -132,7 +132,7 @@ export function detectColumnIndices(headers: string[]): Record<
 }
 
 /** Converte "1.234,56" / "10.000" / "1234.56" / "R$ 10,00" em number. */
-export function parseNumberBr(raw: string | undefined | null): number {
+function parseNumberBr(raw: string | undefined | null): number {
   if (!raw) return 0;
   let s = raw.trim().replace(/R\$\s?/gi, "").replace(/\s/g, "");
   if (!s) return 0;
@@ -173,7 +173,7 @@ export function parseDateFlexible(raw: string): string | null {
 }
 
 /** Mapeia nomes comuns da planilha para o catálogo seed. */
-export function normalizarPrograma(programa: string): string {
+function normalizarPrograma(programa: string): string {
   const prog = programa.toLowerCase().trim();
   if (prog.includes("all accor") || prog === "accor") return "All Accor";
   if (prog.includes("tudoazul") || prog.includes("tudo azul") || prog.includes("azul")) {

@@ -141,9 +141,3 @@ export interface Cotacao {
   fonte: string | null;
 }
 
-export interface SaldoContaView {
-  conta_id: string;
-  titular_id: string;
-  programa_id: string;
-  saldo: number;
-}

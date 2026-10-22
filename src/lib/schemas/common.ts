@@ -2,7 +2,7 @@ import { z } from "zod";
 import { isCompleteCpf } from "@/lib/cpf";
 
 /** Normaliza vazio/NaN de inputs HTML + valueAsNumber do RHF. */
-export function emptyToUndef(value: unknown): unknown {
+function emptyToUndef(value: unknown): unknown {
   if (value === "" || value === null || value === undefined) return undefined;
   if (typeof value === "number" && Number.isNaN(value)) return undefined;
   return value;
@@ -27,9 +27,6 @@ export const optionalCpf = z
     (value) => !value?.trim() || isCompleteCpf(value),
     "Informe um CPF completo (000.000.000-00)"
   );
-
-export const requiredNumber = (message = "Informe um número") =>
-  z.preprocess(emptyToUndef, z.number({ error: message }));
 
 export const positiveNumber = (message = "Deve ser maior que zero") =>
   z.preprocess(

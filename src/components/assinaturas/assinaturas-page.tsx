@@ -41,7 +41,7 @@ import {
   useUpgradeAssinatura,
 } from "@/lib/queries/assinaturas";
 import type { AssinaturaJoin } from "@/lib/queries/assinaturas";
-import { useContas } from "@/lib/queries/contas";
+import { useContasComSaldo } from "@/lib/queries/contas";
 import { custoPorMilheiro, milhasEfetivasMensais } from "@/lib/calculations";
 import {
   assinaturaEditSchema,
@@ -56,7 +56,7 @@ import type { StatusAssinatura } from "@/types/database";
 
 export function AssinaturasPageClient() {
   const { data, isLoading } = useAssinaturas();
-  const { data: contas } = useContas();
+  const { data: contas } = useContasComSaldo();
   const createMut = useCreateAssinatura();
   const updateMut = useUpdateAssinatura();
   const upgradeMut = useUpgradeAssinatura();
