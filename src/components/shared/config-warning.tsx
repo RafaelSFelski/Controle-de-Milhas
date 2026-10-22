@@ -13,9 +13,9 @@ export function ConfigWarning() {
           Supabase não configurado
         </p>
         <p className="text-amber-800 dark:text-amber-300 mt-1">
-          Crie um arquivo <code>.env.local</code> com{" "}
-          <code>NEXT_PUBLIC_SUPABASE_URL</code> e{" "}
-          <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> para conectar ao banco. Veja{" "}
+          Configure <code>NEXT_PUBLIC_SUPABASE_URL</code> e uma chave pública{" "}
+          (<code>NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code> ou{" "}
+          <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>) para conectar ao banco. Veja{" "}
           <code>.env.local.example</code> e <code>supabase/migrations/</code>.
         </p>
       </div>
