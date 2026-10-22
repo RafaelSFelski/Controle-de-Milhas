@@ -1,0 +1,12 @@
+overrides:
+  brace-expansion@<2: ^1.1.21
+  brace-expansion@>=4: ^5.0.12
+  js-yaml@>=4: ^4.3.2
+  nanoid@<4: ^3.3.18
+  postcss: ^8.5.23
+  browserslist: ^4.28.7
+  baseline-browser-mapping: ^2.11.0
+  source-map-js: ^1.2.2
+
+allowBuilds:
+  unrs-resolver: false
