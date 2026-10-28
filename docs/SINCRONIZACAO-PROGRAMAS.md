@@ -100,9 +100,10 @@ primeiro (movimento faltando ≠ ajuste).
 
 ## 3. Smiles (implementado)
 
-> Seed: `0022_seed_smiles.sql` reproduz este extrato do zero — 22 movimentos,
-> assinatura do Clube e os 4 bilhetes de voo. Antes dele os movimentos existiam só
-> no banco (aplicados por SQL direto), e um `db reset` devolvia a carteira sem Smiles.
+> Seed: `0022_seed_smiles.sql` reproduz este extrato — 22 movimentos, assinatura do
+> Clube e os 4 bilhetes de voo. Antes dele os movimentos existiam só no banco
+> (aplicados por SQL direto). O seed só roda se a conta Smiles (`numero_conta`) já
+> existir; `titulares`/`contas` não estão em migration.
 
 ### 3.1 Telas
 

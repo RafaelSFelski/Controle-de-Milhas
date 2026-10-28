@@ -52,7 +52,7 @@ No SQL Editor do Supabase, execute na ordem:
 
 > Se o banco cloud **já tem** as migrations 0001–0004, aplique apenas **0005–0008**. Se já tem até 0007, aplique só **0008**. Se já tem até 0008, aplique **0010–0022**.
 >
-> Um `db reset` do zero reproduz a carteira inteira: cada programa tem seed próprio (Smiles, All Accor, TudoAzul, Livelo e Esfera).
+> Um `db reset` recria o **schema** e roda os seeds de cada programa. Os seeds dependem da conta do programa já existir (`numero_conta`), então em banco vazio eles são ignorados com `raise notice` — `titulares` e `contas` são dados do usuário e não estão em migration.
 >
 > `0011` desliga RLS na tabela `voos`: o Supabase liga RLS por padrão em tabelas novas e, sem isso, a anon key recebe `200` com lista vazia.
 

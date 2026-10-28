@@ -26,15 +26,25 @@ begin
     return;
   end if;
 
-  if exists (select 1 from public.movimentacoes where conta_id = v_conta) then
-    return;
-  end if;
+  -- O plano precisa existir antes: em produção ele já tinha sido criado à mão,
+  -- então este insert era o que faltava para um banco novo.
+  insert into public.assinaturas
+    (conta_id, nome_plano, valor_mensal, dia_cobranca, milhas_mensais, data_inicio, data_fim, status)
+  select v_conta, 'All Signature Essential', 76.00, 29, 500, '2026-05-29', null, 'ativa'
+   where not exists (
+     select 1 from public.assinaturas a
+      where a.conta_id = v_conta and a.nome_plano = 'All Signature Essential'
+   );
 
   select a.id into v_assinatura
     from public.assinaturas a
    where a.conta_id = v_conta
      and a.nome_plano = 'All Signature Essential'
    limit 1;
+
+  if exists (select 1 from public.movimentacoes where conta_id = v_conta) then
+    return;
+  end if;
 
   insert into public.movimentacoes
     (conta_id, data, tipo, origem, quantidade, data_expiracao, valor_pago, descricao, assinatura_id)
