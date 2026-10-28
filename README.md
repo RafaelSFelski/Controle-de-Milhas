@@ -5,6 +5,8 @@ Dashboard pessoal para controle de milhas e transferências entre programas de f
 Construído com **Next.js 16** + **TypeScript** + **Tailwind CSS** + **Supabase**.
 
 > Visão completa do produto, escopo, modelo de dados e roadmap: **[docs/VISAO-PRODUTO.md](docs/VISAO-PRODUTO.md)**
+>
+> Sincronização de extratos e assinaturas dos programas (runbook): **[docs/SINCRONIZACAO-PROGRAMAS.md](docs/SINCRONIZACAO-PROGRAMAS.md)**
 
 ## Setup
 
@@ -34,8 +36,22 @@ No SQL Editor do Supabase, execute na ordem:
 6. `supabase/migrations/0006_seed_all_accor.sql` — programa All Accor no catálogo.
 7. `supabase/migrations/0007_regras_validade.sql` — validade por origem + RPCs atualizadas.
 8. `supabase/migrations/0008_fifo_quantidade_restante.sql` — consumo FIFO de créditos + RPC de milhas a expirar.
+9. `supabase/migrations/0010_movimentacoes_valor_pago.sql` — coluna `valor_pago` (taxas de resgate de voo).
+10. `supabase/migrations/0011_voos.sql` — tabela `voos` (trechos, passageiros, localizador).
+11. `supabase/migrations/0012_seed_voos_smiles.sql` — trechos Smiles de 2026 (idempotente).
+12. `supabase/migrations/0013_voos_por_passageiro.sql` — uma linha por passageiro + rateio de milhas/R$.
+13. `supabase/migrations/0014_seed_all_accor.sql` — extrato All Accor de 2026 (35 movimentos) + valor do plano.
+14. `supabase/migrations/0015_hospedagens.sql` — tabela `hospedagens` (estadias).
+15. `supabase/migrations/0016_seed_hospedagens_accor.sql` — estadias All Accor de 2026.
+16. `supabase/migrations/0017_seed_azul.sql` — extrato TudoAzul + planos do Clube Azul.
+17. `supabase/migrations/0018_voos_realizados.sql` — tabela `voos_realizados` (trechos voados).
+18. `supabase/migrations/0019_seed_voos_realizados_azul.sql` — trechos Azul de 2023–2025.
+19. `supabase/migrations/0020_seed_livelo.sql` — extrato Livelo + Clube Classic.
+20. `supabase/migrations/0021_seed_esfera.sql` — extrato Esfera + Clube Esfera.
 
-> Se o banco cloud **já tem** as migrations 0001–0004, aplique apenas **0005–0008**. Se já tem até 0007, aplique só **0008**.
+> Se o banco cloud **já tem** as migrations 0001–0004, aplique apenas **0005–0008**. Se já tem até 0007, aplique só **0008**. Se já tem até 0008, aplique **0010–0021**.
+>
+> `0011` desliga RLS na tabela `voos`: o Supabase liga RLS por padrão em tabelas novas e, sem isso, a anon key recebe `200` com lista vazia.
 
 ### 3. Configure variáveis de ambiente
 

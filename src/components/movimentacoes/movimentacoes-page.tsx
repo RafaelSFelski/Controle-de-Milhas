@@ -46,7 +46,7 @@ import { calcularDataExpiracao } from "@/lib/calculations";
 import { useRegrasValidade } from "@/lib/queries/regras-validade";
 import { ORIGENS_CREDITO, labelOrigem, resolverValidadeMeses } from "@/lib/validade";
 import { movimentacaoSchema, type MovimentacaoFormValues } from "@/lib/schemas";
-import { formatDate, formatNumber } from "@/lib/utils";
+import { formatBRL, formatDate, formatNumber } from "@/lib/utils";
 import type { TipoMovimentacao } from "@/types/database";
 
 const TIPOS: Record<TipoMovimentacao, { label: string; variant: "default" | "secondary" | "warning" | "outline" }> = {
@@ -454,6 +454,11 @@ export function MovimentacoesPageClient() {
                     >
                       {isPositive ? "+" : ""}
                       {formatNumber(Number(m.quantidade))}
+                      {m.valor_pago != null && Number(m.valor_pago) > 0 && (
+                        <div className="text-[10px] font-normal text-muted-foreground">
+                          {formatBRL(Number(m.valor_pago))}
+                        </div>
+                      )}
                       {isPositive &&
                         m.quantidade_restante != null &&
                         Number(m.quantidade_restante) !== Number(m.quantidade) && (

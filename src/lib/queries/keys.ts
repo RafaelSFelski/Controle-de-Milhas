@@ -18,4 +18,9 @@ export const queryKeys = {
   assinaturas: ["assinaturas"] as const,
   metas: ["metas"] as const,
   cotacoes: ["cotacoes"] as const,
+  voos: ["voos"] as const,
+  resgatesVoo: ["resgates-voo"] as const,
+  voosRealizados: ["voos-realizados"] as const,
+  hospedagens: ["hospedagens"] as const,
+  resgatesEstadia: ["resgates-estadia"] as const,
 };
