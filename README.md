@@ -48,8 +48,11 @@ No SQL Editor do Supabase, execute na ordem:
 18. `supabase/migrations/0019_seed_voos_realizados_azul.sql` — trechos Azul de 2023–2025.
 19. `supabase/migrations/0020_seed_livelo.sql` — extrato Livelo + Clube Classic.
 20. `supabase/migrations/0021_seed_esfera.sql` — extrato Esfera + Clube Esfera.
+21. `supabase/migrations/0022_seed_smiles.sql` — extrato Smiles de 2026 + Clube Smiles + bilhetes.
 
-> Se o banco cloud **já tem** as migrations 0001–0004, aplique apenas **0005–0008**. Se já tem até 0007, aplique só **0008**. Se já tem até 0008, aplique **0010–0021**.
+> Se o banco cloud **já tem** as migrations 0001–0004, aplique apenas **0005–0008**. Se já tem até 0007, aplique só **0008**. Se já tem até 0008, aplique **0010–0022**.
+>
+> Um `db reset` do zero reproduz a carteira inteira: cada programa tem seed próprio (Smiles, All Accor, TudoAzul, Livelo e Esfera).
 >
 > `0011` desliga RLS na tabela `voos`: o Supabase liga RLS por padrão em tabelas novas e, sem isso, a anon key recebe `200` com lista vazia.
 
