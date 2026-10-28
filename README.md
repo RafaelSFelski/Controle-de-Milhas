@@ -50,8 +50,9 @@ No SQL Editor do Supabase, execute na ordem:
 20. `supabase/migrations/0021_seed_esfera.sql` — extrato Esfera + Clube Esfera.
 21. `supabase/migrations/0022_seed_smiles.sql` — extrato Smiles de 2026 + Clube Smiles + bilhetes.
 22. `supabase/migrations/0023_movimentacoes_transferencia_index.sql` — índice da FK `transferencia_id`.
+23. `supabase/migrations/0024_hardening_advisors.sql` — search_path nas funções, view `security_invoker` e revoke no `rls_auto_enable()`.
 
-> Se o banco cloud **já tem** as migrations 0001–0004, aplique apenas **0005–0008**. Se já tem até 0007, aplique só **0008**. Se já tem até 0008, aplique **0010–0023**.
+> Se o banco cloud **já tem** as migrations 0001–0004, aplique apenas **0005–0008**. Se já tem até 0007, aplique só **0008**. Se já tem até 0008, aplique **0010–0024**.
 >
 > Um `db reset` recria o **schema** e roda os seeds de cada programa. Os seeds dependem da conta do programa já existir (`numero_conta`), então em banco vazio eles são ignorados com `raise notice` — `titulares` e `contas` são dados do usuário e não estão em migration.
 >
